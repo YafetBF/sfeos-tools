@@ -47,7 +47,7 @@ def cli():
     help="Database backend to use",
 )
 @database_options
-def add_bbox_shape(backend, host, port, use_ssl, user, password):
+def add_bbox_shape(backend, host, port, use_ssl, user, password, api_key):
     """Add bbox_shape field to existing collections for spatial search support.
 
     This migration is required for collections created before spatial search
@@ -72,7 +72,9 @@ def add_bbox_shape(backend, host, port, use_ssl, user, password):
         os.environ["ES_USER"] = user
     if password:
         os.environ["ES_PASS"] = password
-
+    if api_key:
+        os.environ["ES_API_KEY"] = api_key
+   
     try:
         asyncio.run(run_add_bbox_shape(backend.lower()))
         click.echo(click.style("✓ Migration completed successfully", fg="green"))

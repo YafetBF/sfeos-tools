@@ -119,6 +119,7 @@ The CLI tools use standardized options across commands for consistency:
 - `--use-ssl/--no-ssl`: SSL connection flag (default: true or ES_USE_SSL env var)
 - `--user`: Database username (default: ES_USER env var)
 - `--password`: Database password (default: ES_PASS env var)
+- `--api-key`: Database API Key (default: ES_API_KEY env var)
 
 **STAC API Commands** (`load-data`, `ingest-catalog`, `viewer`):
 - `--stac-url`: STAC API base URL (default: http://localhost:8080)
@@ -143,6 +144,7 @@ Options:
 - `--use-ssl/--no-ssl`: Use SSL connection (default: true or ES_USE_SSL env var)
 - `--user`: Database username (default: ES_USER env var)
 - `--password`: Database password (default: ES_PASS env var)
+- `--api-key`: Database API Key (default: ES_API_KEY env var)
 
 ### reindex
 
@@ -163,6 +165,7 @@ Options:
 - `--use-ssl/--no-ssl`: Use SSL connection (default: true or ES_USE_SSL env var)
 - `--user`: Database username (default: ES_USER env var)
 - `--password`: Database password (default: ES_PASS env var)
+- `--api-key`: Database API Key (default: ES_API_KEY env var)
 - `--yes`: Skip confirmation prompt
 
 Examples:

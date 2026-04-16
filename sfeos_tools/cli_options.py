@@ -37,6 +37,7 @@ def database_connection_options(f):
     Adds the following options:
     - --host: Database host
     - --port: Database port
+    - --api-key: Database API Key
     """
     f = click.option(
         "--host",
@@ -49,6 +50,12 @@ def database_connection_options(f):
         type=int,
         default=None,
         help="Database port (default: 9200 for ES, 9202 for OS, or ES_PORT env var)",
+    )(f)
+    f = click.option(
+        "--api-key",
+        type=str,
+        default=None,
+        help="API Key (default: ES_API_KEY env var)",
     )(f)
     return f
 
