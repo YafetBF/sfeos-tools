@@ -1,9 +1,8 @@
 """Tests for CLI API key authentication support."""
 
 import os
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 
 from sfeos_tools.cli import cli
@@ -16,7 +15,14 @@ class TestSetEsEnvVars:
     def test_set_es_env_vars_all_parameters(self):
         """Test setting all environment variables."""
         # Clear any existing env vars
-        for key in ["ES_HOST", "ES_PORT", "ES_USE_SSL", "ES_USER", "ES_PASS", "ES_API_KEY"]:
+        for key in [
+            "ES_HOST",
+            "ES_PORT",
+            "ES_USE_SSL",
+            "ES_USER",
+            "ES_PASS",
+            "ES_API_KEY",
+        ]:
             os.environ.pop(key, None)
 
         set_es_env_vars(
@@ -36,12 +42,26 @@ class TestSetEsEnvVars:
         assert os.environ.get("ES_API_KEY") == "test-api-key-123"
 
         # Cleanup
-        for key in ["ES_HOST", "ES_PORT", "ES_USE_SSL", "ES_USER", "ES_PASS", "ES_API_KEY"]:
+        for key in [
+            "ES_HOST",
+            "ES_PORT",
+            "ES_USE_SSL",
+            "ES_USER",
+            "ES_PASS",
+            "ES_API_KEY",
+        ]:
             os.environ.pop(key, None)
 
     def test_set_es_env_vars_api_key_only(self):
         """Test setting only API key."""
-        for key in ["ES_HOST", "ES_PORT", "ES_USE_SSL", "ES_USER", "ES_PASS", "ES_API_KEY"]:
+        for key in [
+            "ES_HOST",
+            "ES_PORT",
+            "ES_USE_SSL",
+            "ES_USER",
+            "ES_PASS",
+            "ES_API_KEY",
+        ]:
             os.environ.pop(key, None)
 
         set_es_env_vars(api_key="my-api-key")
@@ -100,7 +120,7 @@ class TestAddBboxShapeCliApiKey:
         ) as mock_set_vars:
             mock_run.return_value = None
 
-            result = runner.invoke(
+            runner.invoke(
                 cli,
                 [
                     "add-bbox-shape",
@@ -123,7 +143,7 @@ class TestAddBboxShapeCliApiKey:
         with patch("sfeos_tools.cli.asyncio.run") as mock_run:
             mock_run.return_value = None
 
-            result = runner.invoke(
+            runner.invoke(
                 cli,
                 [
                     "add-bbox-shape",
@@ -149,7 +169,7 @@ class TestAddBboxShapeCliApiKey:
         ) as mock_set_vars:
             mock_run.return_value = None
 
-            result = runner.invoke(
+            runner.invoke(
                 cli,
                 [
                     "add-bbox-shape",
@@ -183,7 +203,7 @@ class TestReindexCliApiKey:
         ) as mock_set_vars:
             mock_run.return_value = None
 
-            result = runner.invoke(
+            runner.invoke(
                 cli,
                 [
                     "reindex",
@@ -207,7 +227,7 @@ class TestReindexCliApiKey:
         with patch("sfeos_tools.cli.asyncio.run") as mock_run:
             mock_run.return_value = None
 
-            result = runner.invoke(
+            runner.invoke(
                 cli,
                 [
                     "reindex",
@@ -234,7 +254,7 @@ class TestReindexCliApiKey:
         ) as mock_set_vars:
             mock_run.return_value = None
 
-            result = runner.invoke(
+            runner.invoke(
                 cli,
                 [
                     "reindex",
@@ -273,7 +293,7 @@ class TestIngestCatalogCliApiKey:
 
         try:
             with patch("sfeos_tools.cli.ingest_from_xml") as mock_ingest:
-                result = runner.invoke(
+                runner.invoke(
                     cli,
                     [
                         "ingest-catalog",
@@ -302,10 +322,8 @@ class TestIngestCatalogCliApiKey:
             temp_file = f.name
 
         try:
-            with patch(
-                "sfeos_tools.cli.ingest_from_xml"
-            ) as mock_ingest:
-                result = runner.invoke(
+            with patch("sfeos_tools.cli.ingest_from_xml") as mock_ingest:
+                runner.invoke(
                     cli,
                     [
                         "ingest-catalog",
@@ -338,10 +356,8 @@ class TestIngestCatalogCliApiKey:
             temp_file = f.name
 
         try:
-            with patch(
-                "sfeos_tools.cli.ingest_from_xml"
-            ) as mock_ingest:
-                result = runner.invoke(
+            with patch("sfeos_tools.cli.ingest_from_xml") as mock_ingest:
+                runner.invoke(
                     cli,
                     [
                         "ingest-catalog",
