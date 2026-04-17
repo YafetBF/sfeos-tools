@@ -1,5 +1,7 @@
 """Reusable CLI option decorators for consistent connection handling."""
 
+import os
+
 import click
 
 
@@ -10,6 +12,7 @@ def auth_options(f):
     - --use-ssl/--no-ssl: SSL connection flag
     - --user: Username
     - --password: Password
+    - --api-key: API key for authentication
     """
     f = click.option(
         "--use-ssl/--no-ssl",
@@ -27,6 +30,12 @@ def auth_options(f):
         type=str,
         default=None,
         help="Password (default: ES_PASS env var)",
+    )(f)
+    f = click.option(
+        "--api-key",
+        type=str,
+        default=None,
+        help="API key for authentication (default: ES_API_KEY env var)",
     )(f)
     return f
 
@@ -63,6 +72,7 @@ def database_options(f):
     - --use-ssl/--no-ssl: SSL connection flag
     - --user: Database username
     - --password: Database password
+    - --api-key: API key for authentication
     """
     f = database_connection_options(f)
     f = auth_options(f)
@@ -81,3 +91,34 @@ def stac_api_options(f):
         help="STAC API base URL (default: http://localhost:8080)",
     )(f)
     return f
+
+
+def set_es_env_vars(
+    host=None, port=None, use_ssl=None, user=None, password=None, api_key=None
+):
+    """Set Elasticsearch/OpenSearch environment variables from CLI options.
+
+    This function centralizes the logic for setting environment variables
+    from CLI parameters, allowing them to be used by the underlying
+    Elasticsearch/OpenSearch client configurations.
+
+    Args:
+        host: Database host
+        port: Database port
+        use_ssl: SSL connection flag (True/False/None)
+        user: Username for authentication
+        password: Password for authentication
+        api_key: API key for authentication
+    """
+    if host:
+        os.environ["ES_HOST"] = host
+    if port:
+        os.environ["ES_PORT"] = str(port)
+    if use_ssl is not None:
+        os.environ["ES_USE_SSL"] = "true" if use_ssl else "false"
+    if user:
+        os.environ["ES_USER"] = user
+    if password:
+        os.environ["ES_PASS"] = password
+    if api_key:
+        os.environ["ES_API_KEY"] = api_key

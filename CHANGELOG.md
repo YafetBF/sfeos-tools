@@ -8,6 +8,13 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 ### Added
 
+### Updated
+
+## [v0.5.0] - 2026-04-18
+
+### Added
+
+- Added API key authentication support (`--api-key` option) for all database commands (`add-bbox-shape`, `reindex`) and STAC API commands (`ingest-catalog`). Includes `set_es_env_vars()` shared function for centralized environment variable setup and comprehensive test suite with 14 test cases.
 - Added SKOS/RDF-XML demo notebook with example traffic signs taxonomy
 
 ## [v0.4.0] - 2026-03-14
@@ -62,7 +69,8 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 - Initial release
 
-[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.4.0..main
+[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.5.0..main
+[v0.5.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.1.1...v0.2.0

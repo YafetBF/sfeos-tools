@@ -24,7 +24,12 @@ __version__ = _get_version("sfeos-tools")
 
 from .bbox_shape import run_add_bbox_shape
 from .catalog_ingestion import ingest_from_xml
-from .cli_options import auth_options, database_options, stac_api_options
+from .cli_options import (
+    auth_options,
+    database_options,
+    set_es_env_vars,
+    stac_api_options,
+)
 from .data_loader import load_items
 from .reindex import run as unified_reindex_run
 
@@ -47,7 +52,7 @@ def cli():
     help="Database backend to use",
 )
 @database_options
-def add_bbox_shape(backend, host, port, use_ssl, user, password):
+def add_bbox_shape(backend, host, port, use_ssl, user, password, api_key):
     """Add bbox_shape field to existing collections for spatial search support.
 
     This migration is required for collections created before spatial search
@@ -58,20 +63,16 @@ def add_bbox_shape(backend, host, port, use_ssl, user, password):
         sfeos_tools.py add-bbox-shape --backend elasticsearch
         sfeos_tools.py add-bbox-shape --backend opensearch --host db.example.com --port 9200
         sfeos_tools.py add-bbox-shape --backend elasticsearch --no-ssl --host localhost
+        sfeos_tools.py add-bbox-shape --backend elasticsearch --api-key your-api-key
     """
-    import os
-
-    # Set environment variables from CLI options if provided
-    if host:
-        os.environ["ES_HOST"] = host
-    if port:
-        os.environ["ES_PORT"] = str(port)
-    if use_ssl is not None:
-        os.environ["ES_USE_SSL"] = "true" if use_ssl else "false"
-    if user:
-        os.environ["ES_USER"] = user
-    if password:
-        os.environ["ES_PASS"] = password
+    set_es_env_vars(
+        host=host,
+        port=port,
+        use_ssl=use_ssl,
+        user=user,
+        password=password,
+        api_key=api_key,
+    )
 
     try:
         asyncio.run(run_add_bbox_shape(backend.lower()))
@@ -115,7 +116,7 @@ def add_bbox_shape(backend, host, port, use_ssl, user, password):
     is_flag=True,
     help="Skip confirmation prompt",
 )
-def reindex(backend, host, port, use_ssl, user, password, yes):
+def reindex(backend, host, port, use_ssl, user, password, api_key, yes):
     """Reindex all STAC indexes to the next version and update aliases.
 
     For Elasticsearch, this runs a migration that:
@@ -124,8 +125,6 @@ def reindex(backend, host, port, use_ssl, user, password, yes):
     - Applies asset migration script for compatibility
     - Switches aliases to the new indexes
     """
-    import os
-
     backend = backend.lower()
 
     if not yes:
@@ -137,17 +136,14 @@ def reindex(backend, host, port, use_ssl, user, password, yes):
             click.echo(click.style("Aborted", fg="yellow"))
             return
 
-    # Set environment variables from CLI options if provided
-    if host:
-        os.environ["ES_HOST"] = host
-    if port:
-        os.environ["ES_PORT"] = str(port)
-    if use_ssl is not None:
-        os.environ["ES_USE_SSL"] = "true" if use_ssl else "false"
-    if user:
-        os.environ["ES_USER"] = user
-    if password:
-        os.environ["ES_PASS"] = password
+    set_es_env_vars(
+        host=host,
+        port=port,
+        use_ssl=use_ssl,
+        user=user,
+        password=password,
+        api_key=api_key,
+    )
 
     try:
         asyncio.run(unified_reindex_run(backend))
@@ -232,7 +228,7 @@ def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str) 
 @stac_api_options
 @auth_options
 def ingest_catalog(
-    xml_file: str, stac_url: str, use_ssl: bool, user: str, password: str
+    xml_file: str, stac_url: str, use_ssl: bool, user: str, password: str, api_key: str
 ) -> None:
     """Ingest SKOS/RDF-XML file to create STAC catalogs and sub-catalogs.
 
@@ -250,7 +246,12 @@ def ingest_catalog(
     """
     try:
         ingest_from_xml(
-            xml_file, stac_url, user=user, password=password, use_ssl=use_ssl
+            xml_file,
+            stac_url,
+            user=user,
+            password=password,
+            use_ssl=use_ssl,
+            api_key=api_key,
         )
         click.echo(
             click.style("✓ Catalog ingestion completed successfully", fg="green")
