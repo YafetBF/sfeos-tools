@@ -345,8 +345,8 @@ class TestIngestCatalogCliApiKey:
         finally:
             os.unlink(temp_file)
 
-    def test_ingest_catalog_with_user_password_and_api_key(self):
-        """Test that ingest-catalog accepts both user/password and api-key."""
+    def test_ingest_catalog_rejects_both_auth_methods(self):
+        """Test that ingest-catalog rejects both user/password and api-key together."""
         runner = CliRunner()
 
         import tempfile
@@ -356,27 +356,82 @@ class TestIngestCatalogCliApiKey:
             temp_file = f.name
 
         try:
-            with patch("sfeos_tools.cli.ingest_from_xml") as mock_ingest:
-                runner.invoke(
-                    cli,
-                    [
-                        "ingest-catalog",
-                        "--xml-file",
-                        temp_file,
-                        "--user",
-                        "testuser",
-                        "--password",
-                        "testpass",
-                        "--api-key",
-                        "test-key",
-                    ],
-                )
+            result = runner.invoke(
+                cli,
+                [
+                    "ingest-catalog",
+                    "--xml-file",
+                    temp_file,
+                    "--user",
+                    "testuser",
+                    "--password",
+                    "testpass",
+                    "--api-key",
+                    "test-key",
+                ],
+            )
 
-                # Verify all parameters were passed
-                mock_ingest.assert_called_once()
-                args, kwargs = mock_ingest.call_args
-                assert kwargs.get("user") == "testuser"
-                assert kwargs.get("password") == "testpass"
-                assert kwargs.get("api_key") == "test-key"
+            # Verify the command failed with proper error message
+            assert result.exit_code != 0
+            assert "Authentication error" in result.output
+            assert "user/password OR an api_key" in result.output
+        finally:
+            os.unlink(temp_file)
+
+    def test_ingest_catalog_rejects_user_without_password(self):
+        """Test that ingest-catalog rejects user without password."""
+        runner = CliRunner()
+
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rdf", delete=False) as f:
+            f.write('<?xml version="1.0"?><rdf:RDF></rdf:RDF>')
+            temp_file = f.name
+
+        try:
+            result = runner.invoke(
+                cli,
+                [
+                    "ingest-catalog",
+                    "--xml-file",
+                    temp_file,
+                    "--user",
+                    "testuser",
+                ],
+            )
+
+            # Verify the command failed with proper error message
+            assert result.exit_code != 0
+            assert "Authentication error" in result.output
+            assert "Both user AND password must be provided together" in result.output
+        finally:
+            os.unlink(temp_file)
+
+    def test_ingest_catalog_rejects_password_without_user(self):
+        """Test that ingest-catalog rejects password without user."""
+        runner = CliRunner()
+
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".rdf", delete=False) as f:
+            f.write('<?xml version="1.0"?><rdf:RDF></rdf:RDF>')
+            temp_file = f.name
+
+        try:
+            result = runner.invoke(
+                cli,
+                [
+                    "ingest-catalog",
+                    "--xml-file",
+                    temp_file,
+                    "--password",
+                    "testpass",
+                ],
+            )
+
+            # Verify the command failed with proper error message
+            assert result.exit_code != 0
+            assert "Authentication error" in result.output
+            assert "Both user AND password must be provided together" in result.output
         finally:
             os.unlink(temp_file)

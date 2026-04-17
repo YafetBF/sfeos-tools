@@ -244,6 +244,25 @@ def ingest_catalog(
         sfeos-tools ingest-catalog --xml-file thesaurus.rdf --stac-url http://localhost:8080
         sfeos-tools ingest-catalog --xml-file /path/to/concepts.xml --stac-url https://my-stac-api.com
     """
+    # Validate authentication parameters
+    if api_key and (user or password):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Please provide EITHER user/password OR an api_key, not both.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    if (user and not password) or (password and not user):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Both user AND password must be provided together.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
     try:
         ingest_from_xml(
             xml_file,
