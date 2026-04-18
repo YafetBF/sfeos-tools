@@ -86,6 +86,7 @@ def ingest_from_xml(
     user: str = None,
     password: str = None,
     use_ssl: bool = None,
+    api_key: str = None,
 ) -> None:
     """Ingest SKOS/RDF-XML file to create STAC catalogs and sub-catalogs.
 
@@ -95,6 +96,7 @@ def ingest_from_xml(
         user: Optional username for basic authentication
         password: Optional password for basic authentication
         use_ssl: Optional SSL verification flag
+        api_key: Optional API key for authentication
     """
     headers = {"Content-Type": "application/json"}
 
@@ -102,6 +104,8 @@ def ingest_from_xml(
     auth = None
     if user and password:
         auth = (user, password)
+    elif api_key:
+        headers["Authorization"] = f"ApiKey {api_key}"
 
     # Prepare SSL verification settings
     verify_ssl = True

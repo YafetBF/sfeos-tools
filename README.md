@@ -119,6 +119,7 @@ The CLI tools use standardized options across commands for consistency:
 - `--use-ssl/--no-ssl`: SSL connection flag (default: true or ES_USE_SSL env var)
 - `--user`: Database username (default: ES_USER env var)
 - `--password`: Database password (default: ES_PASS env var)
+- `--api-key`: API key for authentication (default: ES_API_KEY env var)
 
 **STAC API Commands** (`load-data`, `ingest-catalog`, `viewer`):
 - `--stac-url`: STAC API base URL (default: http://localhost:8080)
@@ -126,6 +127,7 @@ The CLI tools use standardized options across commands for consistency:
 **Authentication Options** (optional for STAC API commands):
 - `--user`: Username for basic authentication
 - `--password`: Password for basic authentication
+- `--api-key`: API key for authentication
 - `--use-ssl/--no-ssl`: SSL verification flag
 
 ### add-bbox-shape
@@ -143,6 +145,22 @@ Options:
 - `--use-ssl/--no-ssl`: Use SSL connection (default: true or ES_USE_SSL env var)
 - `--user`: Database username (default: ES_USER env var)
 - `--password`: Database password (default: ES_PASS env var)
+- `--api-key`: API key for authentication (default: ES_API_KEY env var)
+
+Examples:
+```bash
+# Add bbox_shape with default settings
+sfeos-tools add-bbox-shape --backend elasticsearch
+
+# Add bbox_shape with custom host and port
+sfeos-tools add-bbox-shape --backend elasticsearch --host db.example.com --port 9200
+
+# Add bbox_shape with API key authentication
+sfeos-tools add-bbox-shape --backend elasticsearch --api-key your-api-key
+
+# Add bbox_shape with API key and custom host
+sfeos-tools add-bbox-shape --backend opensearch --host prod.example.com --api-key your-api-key
+```
 
 ### reindex
 
@@ -163,6 +181,7 @@ Options:
 - `--use-ssl/--no-ssl`: Use SSL connection (default: true or ES_USE_SSL env var)
 - `--user`: Database username (default: ES_USER env var)
 - `--password`: Database password (default: ES_PASS env var)
+- `--api-key`: API key for authentication (default: ES_API_KEY env var)
 - `--yes`: Skip confirmation prompt
 
 Examples:
@@ -172,6 +191,12 @@ sfeos-tools reindex --backend elasticsearch --host localhost --port 9200 --no-ss
 
 # Reindex OpenSearch with default settings
 sfeos-tools reindex --backend opensearch --yes
+
+# Reindex with API key authentication
+sfeos-tools reindex --backend elasticsearch --api-key your-api-key --yes
+
+# Reindex with API key and custom host
+sfeos-tools reindex --backend opensearch --host prod.example.com --api-key your-api-key --yes
 ```
 
 ### load-data
@@ -234,6 +259,7 @@ Options:
 - `--stac-url`: STAC API base URL (default: http://localhost:8080)
 - `--user`: Username for basic authentication (optional)
 - `--password`: Password for basic authentication (optional)
+- `--api-key`: API key for authentication (optional)
 - `--use-ssl/--no-ssl`: Enable or disable SSL verification (optional)
 
 Examples:
@@ -247,11 +273,14 @@ sfeos-tools ingest-catalog --xml-file demo-notebooks/traffic-signs.rdf --stac-ur
 # Ingest with basic authentication
 sfeos-tools ingest-catalog --xml-file concepts.xml --stac-url https://my-stac-api.com --user myuser --password mypass
 
+# Ingest with API key authentication
+sfeos-tools ingest-catalog --xml-file concepts.xml --stac-url https://my-stac-api.com --api-key your-api-key
+
 # Ingest with SSL verification disabled
 sfeos-tools ingest-catalog --xml-file concepts.xml --stac-url https://my-stac-api.com --no-ssl
 
-# Ingest with authentication and custom SSL settings
-sfeos-tools ingest-catalog --xml-file /path/to/concepts.xml --stac-url https://my-stac-api.com --user admin --password secret --no-ssl
+# Ingest with API key and custom SSL settings
+sfeos-tools ingest-catalog --xml-file /path/to/concepts.xml --stac-url https://my-stac-api.com --api-key your-api-key --no-ssl
 ```
 
 ### viewer
