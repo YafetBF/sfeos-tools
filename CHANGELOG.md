@@ -8,7 +8,11 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 ### Added
 
+- Added `crawl-graph` command to crawl SFEOS Multi-Tenant Catalogs and Collections, building and displaying the DAG with support for poly-hierarchies. Features include STAC-compliant pagination (both `rel="next"` links and limit/offset), mathematically-deduced root catalog detection using NetworkX `in_degree()`, safe poly-hierarchy visualization with `(🔗 Poly-Linked)` indicators, and dual output formats (text tree and JSON graph). Requires optional `networkx` dependency (installable via `pip install sfeos-tools[crawler]`).
+
 ### Updated
+
+- Fixed poly-hierarchy support in `ingest_from_xml()` to properly handle nodes with multiple parents. Changed hierarchy mapping from single parent (`g.value()`) to multiple parents (`g.objects()`), ensuring all parent-child relationships are created via POST requests to `/catalogs/{parent_id}/catalogs`. This enables complete DAG ingestion for complex taxonomies with diamond dependencies and multi-parent nodes.
 
 ## [v0.5.0] - 2026-04-18
 

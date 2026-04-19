@@ -52,6 +52,9 @@ elasticsearch = [
 opensearch = [
     "stac-fastapi-opensearch>=6.6.0",
 ]
+crawler = [
+    "networkx>=2.6.0",
+]
 viewer = [
     "streamlit>=1.28.0",
     "folium>=0.14.0",
@@ -66,6 +69,8 @@ dev = [
     "folium>=0.14.0",
     "streamlit-folium>=0.15.0",
     "pillow>=9.0.0",
+    # Crawler dependencies
+    "networkx>=2.6.0",
     # Development tools
     "pytest>=6.0",
     "pytest-asyncio>=0.21.0",

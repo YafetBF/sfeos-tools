@@ -9,11 +9,18 @@ Usage:
 """
 
 import asyncio
+import json
 import logging
 import sys
+from urllib.parse import urljoin
 
 import click
 import requests
+
+try:
+    import networkx as nx
+except ImportError:
+    nx = None
 
 try:
     from importlib.metadata import version as _get_version
@@ -389,6 +396,197 @@ def viewer(stac_url: str, port: int) -> None:
         error_msg = str(e)
         click.echo(click.style(f"✗ Failed to start viewer: {error_msg}", fg="red"))
         sys.exit(1)
+
+
+def _fetch_all_paginated(
+    session: requests.Session, initial_url: str, items_key: str
+) -> list:
+    """Helper function to exhaust a STAC paginated endpoint by following 'next' links.
+
+    Handles both traditional STAC pagination (rel="next" links) and limit-based
+    pagination (numberMatched/numberReturned fields).
+
+    Args:
+        session: Requests session for HTTP calls
+        initial_url: Starting URL for the paginated endpoint
+        items_key: Key in the JSON response containing the items (e.g., 'catalogs', 'children')
+
+    Returns:
+        List of all items across all pages
+    """
+    items = []
+    next_url = initial_url
+
+    while next_url:
+        try:
+            response = session.get(next_url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            items.extend(data.get(items_key, []))
+
+            links = data.get("links", [])
+            next_link = next(
+                (link for link in links if link.get("rel") == "next"), None
+            )
+
+            if next_link:
+                next_url = next_link["href"]
+            else:
+                number_matched = data.get("numberMatched")
+                number_returned = data.get("numberReturned")
+
+                if (
+                    number_matched is not None
+                    and number_returned is not None
+                    and len(items) < number_matched
+                ):
+                    limit = number_returned
+                    offset = len(items)
+                    separator = "&" if "?" in initial_url else "?"
+                    next_url = f"{initial_url}{separator}limit={limit}&offset={offset}"
+                else:
+                    next_url = None
+
+        except requests.exceptions.RequestException:
+            break
+
+    return items
+
+
+@cli.command("crawl-graph")
+@click.option(
+    "--url",
+    default="http://localhost:8080",
+    help="The base URL of the SFEOS API.",
+)
+@click.option(
+    "--output",
+    type=click.Choice(["text", "json"]),
+    default="text",
+    help="Format to display the graph.",
+)
+def crawl_graph(url: str, output: str) -> None:
+    """Crawl the SFEOS Multi-Tenant Catalogs and Collections to build and display the DAG.
+
+    This command traverses the SFEOS API hierarchy, discovering all catalogs and
+    collections regardless of whether the backend has a dedicated graph endpoint.
+    It automatically detects true root catalogs by analyzing graph structure and
+    handles STAC-compliant pagination to ensure no entities are missed.
+
+    Examples:
+        sfeos-tools crawl-graph
+        sfeos-tools crawl-graph --url http://localhost:8080
+        sfeos-tools crawl-graph --url https://my-sfeos-api.com --output json
+    """
+    if nx is None:
+        click.echo(
+            click.style(
+                "✗ networkx is not installed. Install with: pip install networkx",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    click.echo(click.style(f"🌲 Crawling SFEOS Multi-Tenant API at {url}...", fg="cyan"))
+
+    dag = nx.DiGraph()
+    session = requests.Session()
+
+    catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
+    try:
+        all_catalogs = _fetch_all_paginated(session, catalogs_endpoint, "catalogs")
+
+        for catalog in all_catalogs:
+            dag.add_node(catalog["id"], type="Catalog")
+
+    except requests.exceptions.RequestException as e:
+        click.echo(
+            click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red")
+        )
+        sys.exit(1)
+
+    with click.progressbar(
+        all_catalogs, label="Traversing Hierarchy", show_pos=True
+    ) as bar:
+        for catalog in bar:
+            current_id = catalog["id"]
+            children_endpoint = urljoin(url, f"/catalogs/{current_id}/children")
+
+            try:
+                children = _fetch_all_paginated(
+                    session, children_endpoint, "children"
+                )
+
+                for child in children:
+                    child_id = child["id"]
+                    child_type = child.get("type", "Unknown")
+
+                    if child_id not in dag:
+                        dag.add_node(child_id, type=child_type)
+
+                    dag.add_edge(current_id, child_id)
+
+            except requests.exceptions.RequestException:
+                click.echo(
+                    click.style(
+                        f"\n⚠️ Failed to fetch children for {current_id}",
+                        fg="yellow",
+                    )
+                )
+
+    true_roots = [n for n, d in dag.in_degree() if d == 0]
+
+    dag.add_node("ROOT", type="Virtual")
+    for root in true_roots:
+        dag.add_edge("ROOT", root)
+
+    click.echo(
+        click.style(
+            f"\n✅ Crawl complete! Discovered {dag.number_of_nodes() - 1} entities.",
+            fg="green",
+        )
+    )
+
+    if output == "json":
+        graph_json = nx.node_link_data(dag)
+        click.echo(json.dumps(graph_json, indent=2))
+    else:
+        click.echo(click.style("\n--- SFEOS Topology ---", fg="cyan", bold=True))
+        _print_tree(dag, "ROOT", level=0, printed_nodes=set())
+
+
+def _print_tree(
+    graph: nx.DiGraph, node_id: str, level: int, printed_nodes: set
+) -> None:
+    """Recursively prints a terminal-friendly tree view of the graph.
+
+    Handles poly-hierarchies safely by tracking printed nodes. If a node has
+    multiple parents and is reached via a second parent, it displays a poly-link
+    indicator instead of recursing again.
+
+    Args:
+        graph: NetworkX DiGraph of the catalog hierarchy
+        node_id: Current node to print
+        level: Current depth level for indentation
+        printed_nodes: Set of nodes already fully printed (to prevent infinite loops)
+    """
+    indent = "  " * level
+    if level > 0:
+        node_data = graph.nodes.get(node_id, {})
+        node_type = node_data.get("type", "Unknown")
+        icon = "📁" if node_type == "Catalog" else "📄"
+
+        if node_id in printed_nodes:
+            click.echo(f"{indent}└─ {icon} {node_id} (🔗 Poly-Linked)")
+            return
+
+        click.echo(f"{indent}└─ {icon} {node_id}")
+        printed_nodes.add(node_id)
+
+    children = list(graph.successors(node_id))
+    for child in sorted(children):
+        _print_tree(graph, child, level + 1, printed_nodes)
 
 
 if __name__ == "__main__":

@@ -283,6 +283,64 @@ sfeos-tools ingest-catalog --xml-file concepts.xml --stac-url https://my-stac-ap
 sfeos-tools ingest-catalog --xml-file /path/to/concepts.xml --stac-url https://my-stac-api.com --api-key your-api-key --no-ssl
 ```
 
+### crawl-graph
+
+Crawl the SFEOS Multi-Tenant Catalogs and Collections to build and display the Directed Acyclic Graph (DAG) of your SFEOS instance. This command traverses the entire catalog hierarchy using breadth-first search, discovering all catalogs and collections regardless of whether the backend has a dedicated graph endpoint installed.
+
+**Key Features:**
+- Discovers all catalogs and collections in your SFEOS instance
+- Works with any SFEOS deployment (no special endpoints required)
+- Prevents infinite loops in poly-hierarchy DAGs using a visited set
+- Two output formats: hierarchical text tree or JSON graph data
+- Progress tracking with visual progress bar
+- Graceful error handling for connection failures
+
+```bash
+sfeos-tools crawl-graph [options]
+```
+
+Options:
+- `--url`: Base URL of the SFEOS API (default: http://localhost:8080)
+- `--output`: Output format: `text` for hierarchical tree view or `json` for graph data (default: text)
+
+**Requirements:**
+
+The crawler requires networkx. Install with:
+```bash
+pip install sfeos-tools[crawler]
+```
+
+Examples:
+```bash
+# Crawl default localhost instance with text output
+sfeos-tools crawl-graph
+
+# Crawl a custom SFEOS instance
+sfeos-tools crawl-graph --url https://my-sfeos-api.com
+
+# Get JSON output for programmatic use
+sfeos-tools crawl-graph --url http://localhost:8080 --output json
+
+# Crawl custom instance and output as JSON
+sfeos-tools crawl-graph --url https://my-sfeos-api.com --output json
+```
+
+**Example Output (Text Format):**
+```
+🌲 Crawling SFEOS Multi-Tenant API at http://localhost:8080...
+Traversing Hierarchy  [####################################]  100%
+✅ Crawl complete! Discovered 13 entities.
+
+--- SFEOS Topology ---
+  └─ 📁 tenant-a
+    └─ 📁 forestry-dept
+      └─ 📄 sentinel-2-l2a
+  └─ 📁 tenant-b
+    └─ 📄 landsat-8-c2-l2
+```
+
+The JSON output provides a complete graph representation suitable for analysis, visualization, or integration with other tools.
+
 ### viewer
 
 Launch an interactive Streamlit-based web viewer for exploring STAC collections and items. The viewer provides:

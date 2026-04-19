@@ -97,7 +97,16 @@ def ingest_from_xml(
         password: Optional password for basic authentication
         use_ssl: Optional SSL verification flag
         api_key: Optional API key for authentication
+
+    Raises:
+        ValueError: If both basic auth (user/password) and API key are provided
     """
+    # Validate that only one authentication method is provided
+    if (user and password) and api_key:
+        raise ValueError(
+            "Authentication error: Please provide EITHER user/password OR an api_key, not both."
+        )
+
     headers = {"Content-Type": "application/json"}
 
     # Prepare authentication if provided
@@ -119,17 +128,17 @@ def ingest_from_xml(
     # Pass 0: Pre-compute all STAC IDs and build hierarchy
     print("Pre-computing STAC IDs and hierarchy...")
     uri_to_stac_id = {}
-    hierarchy_map = {}  # Maps child_uri -> parent_uri
+    hierarchy_map = {}  # Maps child_uri -> [parent_uris] (supports poly-hierarchy)
 
     for subject in g.subjects(RDF.type, SKOS.Concept):
         pref_label = g.value(subject, SKOS.prefLabel)
         title = str(pref_label) if pref_label else "Unnamed Concept"
         uri_to_stac_id[subject] = slugify(title)
 
-        # Build hierarchy from skos:broader relationships
-        broader = g.value(subject, SKOS.broader)
-        if broader:
-            hierarchy_map[subject] = broader
+        # Build hierarchy from skos:broader relationships (direct parents)
+        parents = list(g.objects(subject, SKOS.broader))
+        if parents:
+            hierarchy_map[subject] = parents
 
     # Pass 1: Create root-level catalogs (those without parents)
     print("\nCreating root catalogs...")
@@ -143,57 +152,63 @@ def ingest_from_xml(
             subject, g, uri_to_stac_id, stac_api_url, headers, auth, verify_ssl
         )
 
-    # Pass 2: Create sub-catalogs under their parents
+    # Pass 2: Create sub-catalogs under their parents (supports poly-hierarchy)
     print("\nCreating sub-catalogs...")
-    for child_uri, parent_uri in hierarchy_map.items():
-        parent_id = uri_to_stac_id.get(parent_uri)
+    for child_uri, parent_uris in hierarchy_map.items():
         child_id = uri_to_stac_id.get(child_uri)
+        if not child_id:
+            continue
 
-        if parent_id and child_id:
-            # Create the catalog under its parent
-            title = str(g.value(child_uri, SKOS.prefLabel) or child_id)
-            definition = g.value(child_uri, SKOS.definition)
-            modified = g.value(child_uri, DCT.modified)
+        # Get child metadata once (reused for all parents)
+        title = str(g.value(child_uri, SKOS.prefLabel) or child_id)
+        definition = g.value(child_uri, SKOS.definition)
+        modified = g.value(child_uri, DCT.modified)
 
-            desc = str(definition) if definition else f"ESA Earth Topic: {title}."
-            if modified:
-                desc += f" (Last modified: {modified})"
+        desc = str(definition) if definition else f"ESA Earth Topic: {title}."
+        if modified:
+            desc += f" (Last modified: {modified})"
 
-            stac_links = []
+        stac_links = []
 
-            # Add semantic links
-            match_types = {
-                SKOS.exactMatch: "SKOS Exact Match",
-                SKOS.closeMatch: "SKOS Close Match",
-                SKOS.broadMatch: "SKOS Broad Match",
-                SKOS.narrowMatch: "SKOS Narrow Match",
-            }
-            for skos_prop, link_title in match_types.items():
-                for match_uri in g.objects(child_uri, skos_prop):
-                    stac_links.append(
-                        {"rel": "related", "href": str(match_uri), "title": link_title}
-                    )
+        # Add semantic links
+        match_types = {
+            SKOS.exactMatch: "SKOS Exact Match",
+            SKOS.closeMatch: "SKOS Close Match",
+            SKOS.broadMatch: "SKOS Broad Match",
+            SKOS.narrowMatch: "SKOS Narrow Match",
+        }
+        for skos_prop, link_title in match_types.items():
+            for match_uri in g.objects(child_uri, skos_prop):
+                stac_links.append(
+                    {"rel": "related", "href": str(match_uri), "title": link_title}
+                )
 
-            # Add related links
-            for related_subj in g.objects(child_uri, SKOS.related):
-                related_stac_id = uri_to_stac_id.get(related_subj)
-                if related_stac_id:
-                    stac_links.append(
-                        {
-                            "rel": "related",
-                            "href": f"{stac_api_url}/catalogs/{related_stac_id}",
-                            "title": f"Related Concept: {related_stac_id.replace('-', ' ').title()}",
-                        }
-                    )
+        # Add related links
+        for related_subj in g.objects(child_uri, SKOS.related):
+            related_stac_id = uri_to_stac_id.get(related_subj)
+            if related_stac_id:
+                stac_links.append(
+                    {
+                        "rel": "related",
+                        "href": f"{stac_api_url}/catalogs/{related_stac_id}",
+                        "title": f"Related Concept: {related_stac_id.replace('-', ' ').title()}",
+                    }
+                )
 
-            catalog_payload = {
-                "type": "Catalog",
-                "id": child_id,
-                "title": title,
-                "description": desc,
-                "stac_version": "1.0.0",
-                "links": stac_links,
-            }
+        catalog_payload = {
+            "type": "Catalog",
+            "id": child_id,
+            "title": title,
+            "description": desc,
+            "stac_version": "1.0.0",
+            "links": stac_links,
+        }
+
+        # Create the sub-catalog under EACH parent (poly-hierarchy support)
+        for parent_uri in parent_uris:
+            parent_id = uri_to_stac_id.get(parent_uri)
+            if not parent_id:
+                continue
 
             res = requests.post(
                 f"{stac_api_url}/catalogs/{parent_id}/catalogs",
