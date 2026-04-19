@@ -750,14 +750,18 @@ def visualize_graph(url: str, layout: str) -> None:
         if in_edges > 1:
             dag.nodes[node]["color"] = "#ff9800"
             dag.nodes[node]["shape"] = "diamond"
+            dag.nodes[node]["size"] = 32
             dag.nodes[node]["title"] += " (Poly-Linked)"
         elif node_type == "Collection":
             dag.nodes[node]["color"] = "#9C27B0"
             dag.nodes[node]["shape"] = "box"
+            dag.nodes[node]["size"] = 28
         elif out_edges == 0:
             dag.nodes[node]["color"] = "#4CAF50"
+            dag.nodes[node]["size"] = 25
         else:
             dag.nodes[node]["color"] = "#2196F3"
+            dag.nodes[node]["size"] = 28
 
     click.echo(click.style("\n🎨 Rendering the visualization...", fg="cyan"))
 
@@ -791,13 +795,19 @@ def visualize_graph(url: str, layout: str) -> None:
       },
       "nodes": {
         "font": {
-          "size": 14,
-          "face": "monospace"
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
         }
       },
       "edges": {
         "font": {
-          "size": 12
+          "size": 13
+        },
+        "smooth": {
+          "type": "linear"
         }
       }
     }
@@ -827,13 +837,16 @@ def visualize_graph(url: str, layout: str) -> None:
       },
       "nodes": {
         "font": {
-          "size": 14,
-          "face": "monospace"
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
         }
       },
       "edges": {
         "font": {
-          "size": 12
+          "size": 13
         }
       }
     }
@@ -863,13 +876,16 @@ def visualize_graph(url: str, layout: str) -> None:
       },
       "nodes": {
         "font": {
-          "size": 14,
-          "face": "monospace"
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
         }
       },
       "edges": {
         "font": {
-          "size": 12
+          "size": 13
         }
       }
     }
@@ -921,7 +937,57 @@ def visualize_graph(url: str, layout: str) -> None:
     </div>
     """
 
-    html_content = html_content.replace("</body>", legend_html + "\n</body>")
+    level_separators_js = """
+    <script type="text/javascript">
+        // Draw level separators for hierarchical layout
+        if (network.options.layout.hierarchical && network.options.layout.hierarchical.enabled) {
+            network.on("stabilizationIterationsDone", function() {
+                drawLevelSeparators();
+            });
+            
+            function drawLevelSeparators() {
+                var canvas = network.canvas.canvas;
+                var ctx = canvas.getContext('2d');
+                var nodes = network.body.nodes;
+                
+                // Group nodes by their y-position (level)
+                var levels = {};
+                for (var nodeId in nodes) {
+                    var node = nodes[nodeId];
+                    var y = Math.round(node.y / 10) * 10; // Group by approximate y
+                    if (!levels[y]) levels[y] = [];
+                    levels[y].push(node);
+                }
+                
+                // Draw separators
+                var sortedLevels = Object.keys(levels).sort((a, b) => a - b);
+                for (var i = 0; i < sortedLevels.length - 1; i++) {
+                    var currentY = parseFloat(sortedLevels[i]);
+                    var nextY = parseFloat(sortedLevels[i + 1]);
+                    var midY = (currentY + nextY) / 2;
+                    
+                    // Convert world coordinates to canvas coordinates
+                    var canvasY = network.canvas.canvasToDOM({x: 0, y: midY}).y;
+                    
+                    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, canvasY);
+                    ctx.lineTo(canvas.width, canvasY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+            
+            // Redraw on pan/zoom
+            network.on("zoom", drawLevelSeparators);
+            network.on("pan", drawLevelSeparators);
+        }
+    </script>
+    """
+
+    html_content = html_content.replace("</body>", level_separators_js + legend_html + "\n</body>")
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(html_content)
