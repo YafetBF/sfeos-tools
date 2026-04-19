@@ -53,9 +53,23 @@ opensearch = [
     "stac-fastapi-opensearch>=6.6.0",
 ]
 crawler = [
-    "networkx>=2.6.0",
+    "networkx>=3.0",
+]
+visualizer = [
+    "networkx>=3.0",
+    "pyvis>=0.3.0",
 ]
 viewer = [
+    "streamlit>=1.28.0",
+    "folium>=0.14.0",
+    "streamlit-folium>=0.15.0",
+    "pillow>=9.0.0",
+]
+all = [
+    "stac-fastapi-elasticsearch>=6.6.0",
+    "stac-fastapi-opensearch>=6.6.0",
+    "networkx>=3.0",
+    "pyvis>=0.3.0",
     "streamlit>=1.28.0",
     "folium>=0.14.0",
     "streamlit-folium>=0.15.0",
@@ -69,8 +83,9 @@ dev = [
     "folium>=0.14.0",
     "streamlit-folium>=0.15.0",
     "pillow>=9.0.0",
-    # Crawler dependencies
+    # Crawler and visualizer dependencies
     "networkx>=2.6.0",
+    "pyvis>=0.3.0",
     # Development tools
     "pytest>=6.0",
     "pytest-asyncio>=0.21.0",

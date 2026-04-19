@@ -1,0 +1,164 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 100vh;
+                 background-color: #121212;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#2196F3", "font": {"color": "white"}, "id": "construction-signs", "label": "Construction Signs", "shape": "dot", "size": 10, "title": "ID: construction-signs", "type": "Catalog"}, {"color": "#ff9800", "font": {"color": "white"}, "id": "work-zone-speed-limit", "label": "Work Zone Speed Limit", "shape": "diamond", "size": 10, "title": "ID: work-zone-speed-limit (Poly-Linked)", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "electronic-signs", "label": "Electronic Signs", "shape": "dot", "size": 10, "title": "ID: electronic-signs", "type": "Catalog"}, {"color": "#ff9800", "font": {"color": "white"}, "id": "dynamic-speed-limits", "label": "Dynamic Speed Limits", "shape": "diamond", "size": 10, "title": "ID: dynamic-speed-limits (Poly-Linked)", "type": "Catalog"}, {"color": "#ff9800", "font": {"color": "white"}, "id": "vms-incident-warning", "label": "VMS Incident Warning", "shape": "diamond", "size": 10, "title": "ID: vms-incident-warning (Poly-Linked)", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "historic-site-signs", "label": "Historic Site Signs", "shape": "dot", "size": 10, "title": "ID: historic-site-signs", "type": "Catalog"}, {"color": "#4CAF50", "font": {"color": "white"}, "id": "unesco-heritage-signs", "label": "UNESCO Heritage Signs", "shape": "dot", "size": 10, "title": "ID: unesco-heritage-signs", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "informational-signs", "label": "Informational Signs", "shape": "dot", "size": 10, "title": "ID: informational-signs", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "tourist-signs", "label": "Tourist Signs", "shape": "dot", "size": 10, "title": "ID: tourist-signs", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "maximum-speed-limits", "label": "Maximum Speed Limits", "shape": "dot", "size": 10, "title": "ID: maximum-speed-limits", "type": "Catalog"}, {"color": "#4CAF50", "font": {"color": "white"}, "id": "100-km-h-zone", "label": "100 km/h Zone", "shape": "dot", "size": 10, "title": "ID: 100-km-h-zone", "type": "Catalog"}, {"color": "#4CAF50", "font": {"color": "white"}, "id": "50-km-h-zone", "label": "50 km/h Zone", "shape": "dot", "size": 10, "title": "ID: 50-km-h-zone", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "permanent-signs", "label": "Permanent Signs", "shape": "dot", "size": 10, "title": "ID: permanent-signs", "type": "Catalog"}, {"color": "#ff9800", "font": {"color": "white"}, "id": "regulatory-signs", "label": "Regulatory Signs", "shape": "diamond", "size": 10, "title": "ID: regulatory-signs (Poly-Linked)", "type": "Catalog"}, {"color": "#ff9800", "font": {"color": "white"}, "id": "warning-signs", "label": "Warning Signs", "shape": "diamond", "size": 10, "title": "ID: warning-signs (Poly-Linked)", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "prohibitory-signs", "label": "Prohibitory Signs", "shape": "dot", "size": 10, "title": "ID: prohibitory-signs", "type": "Catalog"}, {"color": "#ff9800", "font": {"color": "white"}, "id": "speed-limit-signs", "label": "Speed Limit Signs", "shape": "diamond", "size": 10, "title": "ID: speed-limit-signs (Poly-Linked)", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "turn-prohibition-signs", "label": "Turn Prohibition Signs", "shape": "dot", "size": 10, "title": "ID: turn-prohibition-signs", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "school-zone-warnings", "label": "School Zone Warnings", "shape": "dot", "size": 10, "title": "ID: school-zone-warnings", "type": "Catalog"}, {"color": "#9C27B0", "font": {"color": "white"}, "id": "cat-coll", "label": "Sentinel 2 L2A COGs", "shape": "box", "size": 10, "title": "ID: cat-coll", "type": "Collection"}, {"color": "#ff9800", "font": {"color": "white"}, "id": "school-zone-speed-limit", "label": "School Zone Speed Limit", "shape": "diamond", "size": 10, "title": "ID: school-zone-speed-limit (Poly-Linked)", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "temporary-signs", "label": "Temporary Signs", "shape": "dot", "size": 10, "title": "ID: temporary-signs", "type": "Catalog"}, {"color": "#2196F3", "font": {"color": "white"}, "id": "traffic-signs", "label": "Traffic Signs", "shape": "dot", "size": 10, "title": "ID: traffic-signs", "type": "Catalog"}, {"color": "#4CAF50", "font": {"color": "white"}, "id": "no-u-turn", "label": "No U-Turn", "shape": "dot", "size": 10, "title": "ID: no-u-turn", "type": "Catalog"}, {"color": "#4CAF50", "font": {"color": "white"}, "id": "speed-camera-warning", "label": "Speed Camera Warning", "shape": "dot", "size": 10, "title": "ID: speed-camera-warning", "type": "Catalog"}, {"color": "#ff0040", "font": {"color": "white"}, "id": "ROOT", "label": "\ud83c\udf10 STAC API", "shape": "dot", "size": 30, "title": "Virtual Root Node"}, {"color": "#4CAF50", "font": {"color": "white"}, "id": "road-markings", "label": "Road Markings", "shape": "dot", "size": 10, "title": "ID: road-markings", "type": "Catalog"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "construction-signs", "to": "work-zone-speed-limit", "width": 1}, {"arrows": "to", "from": "electronic-signs", "to": "dynamic-speed-limits", "width": 1}, {"arrows": "to", "from": "electronic-signs", "to": "vms-incident-warning", "width": 1}, {"arrows": "to", "from": "historic-site-signs", "to": "unesco-heritage-signs", "width": 1}, {"arrows": "to", "from": "informational-signs", "to": "tourist-signs", "width": 1}, {"arrows": "to", "from": "maximum-speed-limits", "to": "100-km-h-zone", "width": 1}, {"arrows": "to", "from": "maximum-speed-limits", "to": "50-km-h-zone", "width": 1}, {"arrows": "to", "from": "permanent-signs", "to": "informational-signs", "width": 1}, {"arrows": "to", "from": "permanent-signs", "to": "regulatory-signs", "width": 1}, {"arrows": "to", "from": "permanent-signs", "to": "warning-signs", "width": 1}, {"arrows": "to", "from": "prohibitory-signs", "to": "speed-limit-signs", "width": 1}, {"arrows": "to", "from": "prohibitory-signs", "to": "turn-prohibition-signs", "width": 1}, {"arrows": "to", "from": "regulatory-signs", "to": "prohibitory-signs", "width": 1}, {"arrows": "to", "from": "regulatory-signs", "to": "speed-limit-signs", "width": 1}, {"arrows": "to", "from": "school-zone-warnings", "to": "cat-coll", "width": 1}, {"arrows": "to", "from": "school-zone-warnings", "to": "school-zone-speed-limit", "width": 1}, {"arrows": "to", "from": "speed-limit-signs", "to": "dynamic-speed-limits", "width": 1}, {"arrows": "to", "from": "speed-limit-signs", "to": "maximum-speed-limits", "width": 1}, {"arrows": "to", "from": "speed-limit-signs", "to": "school-zone-speed-limit", "width": 1}, {"arrows": "to", "from": "speed-limit-signs", "to": "work-zone-speed-limit", "width": 1}, {"arrows": "to", "from": "temporary-signs", "to": "construction-signs", "width": 1}, {"arrows": "to", "from": "temporary-signs", "to": "vms-incident-warning", "width": 1}, {"arrows": "to", "from": "tourist-signs", "to": "historic-site-signs", "width": 1}, {"arrows": "to", "from": "traffic-signs", "to": "electronic-signs", "width": 1}, {"arrows": "to", "from": "traffic-signs", "to": "permanent-signs", "width": 1}, {"arrows": "to", "from": "traffic-signs", "to": "regulatory-signs", "width": 1}, {"arrows": "to", "from": "traffic-signs", "to": "temporary-signs", "width": 1}, {"arrows": "to", "from": "traffic-signs", "to": "warning-signs", "width": 1}, {"arrows": "to", "from": "turn-prohibition-signs", "to": "no-u-turn", "width": 1}, {"arrows": "to", "from": "warning-signs", "to": "school-zone-warnings", "width": 1}, {"arrows": "to", "from": "warning-signs", "to": "speed-camera-warning", "width": 1}, {"arrows": "to", "from": "warning-signs", "to": "vms-incident-warning", "width": 1}, {"arrows": "to", "from": "ROOT", "to": "road-markings", "width": 1}, {"arrows": "to", "from": "ROOT", "to": "traffic-signs", "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {"physics": {"hierarchicalRepulsion": {"centralGravity": 0.0, "springLength": 200, "springConstant": 0.01, "nodeDistance": 200, "damping": 0.09}, "solver": "hierarchicalRepulsion"}, "layout": {"hierarchical": {"enabled": true, "direction": "UD", "sortMethod": "directed", "nodeSpacing": 300}}, "nodes": {"font": {"size": 14, "face": "monospace"}}, "edges": {"font": {"size": 12}}};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    
+    <div style="position: fixed; top: 20px; right: 20px; background-color: rgba(18, 18, 18, 0.95); 
+                border: 2px solid #666; border-radius: 8px; padding: 15px; z-index: 1000; 
+                font-family: monospace; color: white; max-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 8px;">
+            SFEOS Topology Legend
+        </div>
+        <div style="font-size: 12px; line-height: 1.8;">
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff0040; 
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Virtual Root API</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #2196F3; 
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Standard Catalog</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #4CAF50; 
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Leaf Catalog</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #9C27B0; 
+                            margin-right: 8px; vertical-align: middle;"></span>
+                <span>Collection</span>
+            </div>
+            <div style="margin-bottom: 0;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff9800; 
+                            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); 
+                            margin-right: 8px; vertical-align: middle;"></span>
+                <span>Poly-Linked Node</span>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html>

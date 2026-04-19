@@ -11,7 +11,9 @@ Usage:
 import asyncio
 import json
 import logging
+import os
 import sys
+import webbrowser
 from urllib.parse import urljoin
 
 import click
@@ -21,6 +23,11 @@ try:
     import networkx as nx
 except ImportError:
     nx = None
+
+try:
+    from pyvis.network import Network
+except ImportError:
+    Network = None
 
 try:
     from importlib.metadata import version as _get_version
@@ -511,9 +518,9 @@ def crawl_graph(url: str, output: str) -> None:
     ) as bar:
         for catalog in bar:
             current_id = catalog["id"]
-            children_endpoint = urljoin(url, f"/catalogs/{current_id}/children")
 
             try:
+                children_endpoint = urljoin(url, f"/catalogs/{current_id}/children")
                 children = _fetch_all_paginated(
                     session, children_endpoint, "children"
                 )
@@ -534,6 +541,23 @@ def crawl_graph(url: str, output: str) -> None:
                         fg="yellow",
                     )
                 )
+
+            try:
+                collections_endpoint = urljoin(url, f"/catalogs/{current_id}/collections")
+                collections = _fetch_all_paginated(
+                    session, collections_endpoint, "collections"
+                )
+
+                for collection in collections:
+                    collection_id = collection["id"]
+
+                    if collection_id not in dag:
+                        dag.add_node(collection_id, type="Collection")
+
+                    dag.add_edge(current_id, collection_id)
+
+            except requests.exceptions.RequestException:
+                pass
 
     true_roots = [n for n, d in dag.in_degree() if d == 0]
 
@@ -587,6 +611,330 @@ def _print_tree(
     children = list(graph.successors(node_id))
     for child in sorted(children):
         _print_tree(graph, child, level + 1, printed_nodes)
+
+
+@cli.command("visualize-graph")
+@click.option(
+    "--url",
+    default="http://localhost:8080",
+    help="The base URL of the SFEOS API.",
+)
+@click.option(
+    "--layout",
+    type=click.Choice(["hierarchical", "force", "spring"], case_sensitive=False),
+    default="hierarchical",
+    help="Graph layout style: hierarchical (tree), force (physics-based), or spring (organic).",
+)
+def visualize_graph(url: str, layout: str) -> None:
+    """Crawl SFEOS API and open an interactive web visualization of the DAG.
+
+    This command builds a physics-simulated, drag-and-drop HTML dashboard showing
+    the complete catalog hierarchy. Poly-hierarchical nodes are highlighted as
+    orange diamonds, and the visualization opens automatically in your browser.
+
+    Examples:
+        sfeos-tools visualize-graph
+        sfeos-tools visualize-graph --url http://localhost:8080
+        sfeos-tools visualize-graph --layout force
+        sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout spring
+    """
+    if nx is None:
+        click.echo(
+            click.style(
+                "✗ networkx is not installed. Install with: pip install networkx",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    if Network is None:
+        click.echo(
+            click.style(
+                "✗ pyvis is not installed. Install with: pip install sfeos-tools[visualizer]",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    click.echo(click.style(f"🕸️ Crawling {url} for visualization...", fg="cyan"))
+
+    dag = nx.DiGraph()
+    session = requests.Session()
+
+    catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
+    try:
+        all_catalogs = _fetch_all_paginated(session, catalogs_endpoint, "catalogs")
+
+        for catalog in all_catalogs:
+            dag.add_node(
+                catalog["id"],
+                label=catalog.get("title", catalog["id"]),
+                title=f"ID: {catalog['id']}",
+                type="Catalog",
+            )
+
+    except requests.exceptions.RequestException as e:
+        click.echo(
+            click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red")
+        )
+        sys.exit(1)
+
+    with click.progressbar(
+        all_catalogs, label="Building Web Graph", show_pos=True
+    ) as bar:
+        for catalog in bar:
+            current_id = catalog["id"]
+
+            try:
+                children_endpoint = urljoin(url, f"/catalogs/{current_id}/children")
+                children = _fetch_all_paginated(session, children_endpoint, "children")
+
+                for child in children:
+                    child_id = child["id"]
+                    child_type = child.get("type", "Unknown")
+
+                    if child_id not in dag:
+                        dag.add_node(
+                            child_id,
+                            label=child.get("title", child_id),
+                            title=f"ID: {child_id}",
+                            type=child_type,
+                        )
+
+                    dag.add_edge(current_id, child_id)
+
+            except requests.exceptions.RequestException:
+                pass
+
+            try:
+                collections_endpoint = urljoin(url, f"/catalogs/{current_id}/collections")
+                collections = _fetch_all_paginated(session, collections_endpoint, "collections")
+
+                for collection in collections:
+                    collection_id = collection["id"]
+
+                    if collection_id not in dag:
+                        dag.add_node(
+                            collection_id,
+                            label=collection.get("title", collection_id),
+                            title=f"ID: {collection_id}",
+                            type="Collection",
+                        )
+
+                    dag.add_edge(current_id, collection_id)
+
+            except requests.exceptions.RequestException:
+                pass
+
+    true_roots = [n for n, d in dag.in_degree() if d == 0]
+
+    dag.add_node(
+        "ROOT",
+        label="🌐 STAC API",
+        title="Virtual Root Node",
+        color="#ff0040",
+        size=30,
+    )
+    for root in true_roots:
+        if root != "ROOT":
+            dag.add_edge("ROOT", root)
+
+    for node in dag.nodes:
+        if node == "ROOT":
+            continue
+
+        node_type = dag.nodes[node].get("type", "Unknown")
+        in_edges = dag.in_degree(node)
+        out_edges = dag.out_degree(node)
+
+        if in_edges > 1:
+            dag.nodes[node]["color"] = "#ff9800"
+            dag.nodes[node]["shape"] = "diamond"
+            dag.nodes[node]["title"] += " (Poly-Linked)"
+        elif node_type == "Collection":
+            dag.nodes[node]["color"] = "#9C27B0"
+            dag.nodes[node]["shape"] = "box"
+        elif out_edges == 0:
+            dag.nodes[node]["color"] = "#4CAF50"
+        else:
+            dag.nodes[node]["color"] = "#2196F3"
+
+    click.echo(click.style("\n🎨 Rendering the visualization...", fg="cyan"))
+
+    net = Network(
+        height="100vh", width="100%", directed=True, bgcolor="#121212", font_color="white"
+    )
+    net.from_nx(dag)
+
+    layout_lower = layout.lower()
+
+    if layout_lower == "hierarchical":
+        options_js = """
+    var options = {
+      "physics": {
+        "hierarchicalRepulsion": {
+          "centralGravity": 0.0,
+          "springLength": 200,
+          "springConstant": 0.01,
+          "nodeDistance": 200,
+          "damping": 0.09
+        },
+        "solver": "hierarchicalRepulsion"
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "direction": "UD",
+          "sortMethod": "directed",
+          "nodeSpacing": 300
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 14,
+          "face": "monospace"
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 12
+        }
+      }
+    }
+    """
+    elif layout_lower == "force":
+        options_js = """
+    var options = {
+      "physics": {
+        "forceAtlas2Based": {
+          "gravitationalConstant": -50,
+          "centralGravity": 0.01,
+          "springLength": 200,
+          "springConstant": 0.08,
+          "damping": 0.4,
+          "avoidOverlap": 0.5
+        },
+        "solver": "forceAtlas2Based",
+        "timestep": 0.35,
+        "stabilization": {
+          "iterations": 150
+        }
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": false
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 14,
+          "face": "monospace"
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 12
+        }
+      }
+    }
+    """
+    else:  # spring
+        options_js = """
+    var options = {
+      "physics": {
+        "barnesHut": {
+          "gravitationalConstant": -30000,
+          "centralGravity": 0.3,
+          "springLength": 200,
+          "springConstant": 0.04,
+          "damping": 0.3,
+          "avoidOverlap": 0.5
+        },
+        "solver": "barnesHut",
+        "timestep": 0.5,
+        "stabilization": {
+          "iterations": 200
+        }
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": false
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 14,
+          "face": "monospace"
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 12
+        }
+      }
+    }
+    """
+
+    net.set_options(options_js)
+
+    output_file = "sfeos_topology.html"
+    net.write_html(output_file)
+
+    with open(output_file, "r", encoding="utf-8") as f:
+        html_content = f.read()
+
+    legend_html = """
+    <div style="position: fixed; top: 20px; right: 20px; background-color: rgba(18, 18, 18, 0.95); 
+                border: 2px solid #666; border-radius: 8px; padding: 15px; z-index: 1000; 
+                font-family: monospace; color: white; max-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 8px;">
+            SFEOS Topology Legend
+        </div>
+        <div style="font-size: 12px; line-height: 1.8;">
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff0040; 
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Virtual Root API</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #2196F3; 
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Standard Catalog</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #4CAF50; 
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Leaf Catalog</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #9C27B0; 
+                            margin-right: 8px; vertical-align: middle;"></span>
+                <span>Collection</span>
+            </div>
+            <div style="margin-bottom: 0;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff9800; 
+                            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); 
+                            margin-right: 8px; vertical-align: middle;"></span>
+                <span>Poly-Linked Node</span>
+            </div>
+        </div>
+    </div>
+    """
+
+    html_content = html_content.replace("</body>", legend_html + "\n</body>")
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    filepath = f"file://{os.path.abspath(output_file)}"
+    webbrowser.open(filepath)
+
+    click.echo(
+        click.style(
+            f"✅ Dashboard opened in your browser! (saved to {output_file})",
+            fg="green",
+        )
+    )
 
 
 if __name__ == "__main__":

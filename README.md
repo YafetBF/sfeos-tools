@@ -31,6 +31,8 @@ CLI tools for managing [stac-fastapi-elasticsearch-opensearch](https://github.co
   - [reindex](#reindex)
   - [load-data](#load-data)
   - [ingest-catalog](#ingest-catalog)
+  - [crawl-graph](#crawl-graph)
+  - [visualize-graph](#visualize-graph)
   - [viewer](#viewer)
 - [Development](#development)
 - [License](#license)
@@ -59,6 +61,32 @@ Or for local development:
 pip install -e sfeos_tools[opensearch]
 ```
 
+### For Crawler
+
+To use the `crawl-graph` command:
+
+```bash
+pip install sfeos-tools[crawler]
+```
+
+Or for local development:
+```bash
+pip install -e sfeos_tools[crawler]
+```
+
+### For Visualizer
+
+To use the `visualize-graph` command:
+
+```bash
+pip install sfeos-tools[visualizer]
+```
+
+Or for local development:
+```bash
+pip install -e sfeos_tools[visualizer]
+```
+
 ### For Viewer
 
 To use the interactive Streamlit viewer:
@@ -70,6 +98,19 @@ pip install sfeos-tools[viewer]
 Or for local development:
 ```bash
 pip install -e sfeos_tools[viewer]
+```
+
+### For All Features
+
+To install all optional dependencies (Elasticsearch, OpenSearch, Crawler, Visualizer, and Viewer):
+
+```bash
+pip install sfeos-tools[all]
+```
+
+Or for local development:
+```bash
+pip install -e sfeos_tools[all]
 ```
 
 ### For Development (both backends)
@@ -340,6 +381,69 @@ Traversing Hierarchy  [####################################]  100%
 ```
 
 The JSON output provides a complete graph representation suitable for analysis, visualization, or integration with other tools.
+
+### visualize-graph
+
+Generate an interactive, physics-simulated web visualization of your SFEOS catalog hierarchy. This command crawls the API and renders a beautiful, drag-and-drop HTML dashboard showing the complete DAG with color-coded nodes and automatic browser launch.
+
+**Key Features:**
+- Physics-simulated hierarchical tree layout with spring forces
+- Color-coded nodes for quick visual understanding:
+  - 🔵 Blue: Standard catalogs
+  - 🟢 Green: Leaf catalogs (no children)
+  - 🟣 Purple Boxes: Collections (leaf nodes in STAC hierarchy)
+  - 🟠 Orange Diamonds: Poly-hierarchical nodes (multiple parents)
+  - 🔴 Red: Virtual root API node
+- Interactive drag-and-drop node manipulation
+- Hover tooltips showing catalog/collection IDs and metadata
+- Dark mode UI for comfortable viewing
+- Automatic browser launch with generated HTML file
+- Works with any SFEOS deployment (no special endpoints required)
+
+```bash
+sfeos-tools visualize-graph [options]
+```
+
+Options:
+- `--url`: Base URL of the SFEOS API (default: http://localhost:8080)
+- `--layout`: Graph layout style (default: hierarchical)
+  - `hierarchical`: Tree layout flowing top-to-bottom (best for DAGs)
+  - `force`: Force-directed layout using ForceAtlas2 algorithm (organic, physics-based)
+  - `spring`: Spring-based layout using Barnes-Hut algorithm (natural node spreading)
+
+**Requirements:**
+
+The visualizer requires networkx and pyvis. Install with:
+```bash
+pip install sfeos-tools[visualizer]
+```
+
+Examples:
+```bash
+# Visualize default localhost instance (hierarchical layout)
+sfeos-tools visualize-graph
+
+# Visualize with force-directed layout
+sfeos-tools visualize-graph --layout force
+
+# Visualize with spring layout
+sfeos-tools visualize-graph --layout spring
+
+# Visualize a custom SFEOS instance with hierarchical layout
+sfeos-tools visualize-graph --url https://my-sfeos-api.com
+
+# Visualize custom instance with force-directed layout
+sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout force
+```
+
+**Output:**
+
+The command generates an `sfeos_topology.html` file and automatically opens it in your default browser. The visualization features:
+- Hierarchical tree layout flowing top-to-bottom
+- Nodes that can be dragged to explore relationships
+- Spring physics that naturally separates nodes
+- Poly-hierarchical nodes highlighted as orange diamonds with multiple incoming arrows
+- Responsive design that fills your entire browser window
 
 ### viewer
 

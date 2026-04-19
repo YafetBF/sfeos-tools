@@ -9,6 +9,7 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 ### Added
 
 - Added `crawl-graph` command to crawl SFEOS Multi-Tenant Catalogs and Collections, building and displaying the DAG with support for poly-hierarchies. Features include STAC-compliant pagination (both `rel="next"` links and limit/offset), mathematically-deduced root catalog detection using NetworkX `in_degree()`, safe poly-hierarchy visualization with `(🔗 Poly-Linked)` indicators, and dual output formats (text tree and JSON graph). Requires optional `networkx` dependency (installable via `pip install sfeos-tools[crawler]`).
+- Added `visualize-graph` command to generate an interactive, physics-simulated web visualization of the SFEOS catalog hierarchy. Features include drag-and-drop node manipulation, automatic browser launch, color-coded nodes (blue for standard catalogs, green for leaf nodes, orange diamonds for poly-hierarchical nodes), and hierarchical tree layout. Requires optional `pyvis` dependency (installable via `pip install sfeos-tools[visualizer]`).
 
 ### Updated
 
