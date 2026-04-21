@@ -621,9 +621,9 @@ def _print_tree(
 )
 @click.option(
     "--layout",
-    type=click.Choice(["hierarchical", "force", "spring"], case_sensitive=False),
+    type=click.Choice(["hierarchical", "hierarchical-lr", "force", "spring"], case_sensitive=False),
     default="hierarchical",
-    help="Graph layout style: hierarchical (tree), force (physics-based), or spring (organic).",
+    help="Graph layout style: hierarchical (top-to-bottom tree), hierarchical-lr (left-to-right tree), force (physics-based), or spring (organic).",
 )
 def visualize_graph(url: str, layout: str) -> None:
     """Crawl SFEOS API and open an interactive web visualization of the DAG.
@@ -635,6 +635,7 @@ def visualize_graph(url: str, layout: str) -> None:
     Examples:
         sfeos-tools visualize-graph
         sfeos-tools visualize-graph --url http://localhost:8080
+        sfeos-tools visualize-graph --layout hierarchical-lr
         sfeos-tools visualize-graph --layout force
         sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout spring
     """
@@ -789,6 +790,46 @@ def visualize_graph(url: str, layout: str) -> None:
         "hierarchical": {
           "enabled": true,
           "direction": "UD",
+          "sortMethod": "directed",
+          "nodeSpacing": 300
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 13
+        },
+        "smooth": {
+          "type": "linear"
+        }
+      }
+    }
+    """
+    elif layout_lower == "hierarchical-lr":
+        options_js = """
+    var options = {
+      "physics": {
+        "hierarchicalRepulsion": {
+          "centralGravity": 0.0,
+          "springLength": 200,
+          "springConstant": 0.01,
+          "nodeDistance": 200,
+          "damping": 0.09
+        },
+        "solver": "hierarchicalRepulsion"
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "direction": "LR",
           "sortMethod": "directed",
           "nodeSpacing": 300
         }

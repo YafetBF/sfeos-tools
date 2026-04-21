@@ -408,6 +408,7 @@ Options:
 - `--url`: Base URL of the SFEOS API (default: http://localhost:8080)
 - `--layout`: Graph layout style (default: hierarchical)
   - `hierarchical`: Tree layout flowing top-to-bottom (best for DAGs)
+  - `hierarchical-lr`: Tree layout flowing left-to-right (alternative hierarchical view)
   - `force`: Force-directed layout using ForceAtlas2 algorithm (organic, physics-based)
   - `spring`: Spring-based layout using Barnes-Hut algorithm (natural node spreading)
 
@@ -423,6 +424,9 @@ Examples:
 # Visualize default localhost instance (hierarchical layout)
 sfeos-tools visualize-graph
 
+# Visualize with left-to-right hierarchical layout
+sfeos-tools visualize-graph --layout hierarchical-lr
+
 # Visualize with force-directed layout
 sfeos-tools visualize-graph --layout force
 
@@ -432,8 +436,8 @@ sfeos-tools visualize-graph --layout spring
 # Visualize a custom SFEOS instance with hierarchical layout
 sfeos-tools visualize-graph --url https://my-sfeos-api.com
 
-# Visualize custom instance with force-directed layout
-sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout force
+# Visualize custom instance with left-to-right layout
+sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout hierarchical-lr
 ```
 
 **Output:**
