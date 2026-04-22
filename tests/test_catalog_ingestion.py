@@ -118,7 +118,9 @@ class TestIngestFromXml:
             payload = call[1]["json"]
             child_id = payload.get("id")
             if child_id:
-                child_creation_counts[child_id] = child_creation_counts.get(child_id, 0) + 1
+                child_creation_counts[child_id] = (
+                    child_creation_counts.get(child_id, 0) + 1
+                )
 
         # At least one child should be created multiple times (poly-hierarchy)
         # This depends on the test RDF file having poly-hierarchy relationships

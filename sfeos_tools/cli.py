@@ -408,7 +408,7 @@ def viewer(stac_url: str, port: int) -> None:
 def _fetch_all_paginated(
     session: requests.Session, initial_url: str, items_key: str
 ) -> list:
-    """Helper function to exhaust a STAC paginated endpoint by following 'next' links.
+    """Help exhaust a STAC paginated endpoint by following 'next' links.
 
     Handles both traditional STAC pagination (rel="next" links) and limit-based
     pagination (numberMatched/numberReturned fields).
@@ -508,9 +508,7 @@ def crawl_graph(url: str, output: str) -> None:
             dag.add_node(catalog["id"], type="Catalog")
 
     except requests.exceptions.RequestException as e:
-        click.echo(
-            click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red")
-        )
+        click.echo(click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red"))
         sys.exit(1)
 
     with click.progressbar(
@@ -521,9 +519,7 @@ def crawl_graph(url: str, output: str) -> None:
 
             try:
                 children_endpoint = urljoin(url, f"/catalogs/{current_id}/children")
-                children = _fetch_all_paginated(
-                    session, children_endpoint, "children"
-                )
+                children = _fetch_all_paginated(session, children_endpoint, "children")
 
                 for child in children:
                     child_id = child["id"]
@@ -543,7 +539,9 @@ def crawl_graph(url: str, output: str) -> None:
                 )
 
             try:
-                collections_endpoint = urljoin(url, f"/catalogs/{current_id}/collections")
+                collections_endpoint = urljoin(
+                    url, f"/catalogs/{current_id}/collections"
+                )
                 collections = _fetch_all_paginated(
                     session, collections_endpoint, "collections"
                 )
@@ -621,7 +619,9 @@ def _print_tree(
 )
 @click.option(
     "--layout",
-    type=click.Choice(["hierarchical", "hierarchical-lr", "force", "spring"], case_sensitive=False),
+    type=click.Choice(
+        ["hierarchical", "hierarchical-lr", "force", "spring"], case_sensitive=False
+    ),
     default="hierarchical",
     help="Graph layout style: hierarchical (top-to-bottom tree), hierarchical-lr (left-to-right tree), force (physics-based), or spring (organic).",
 )
@@ -675,9 +675,7 @@ def visualize_graph(url: str, layout: str) -> None:
             )
 
     except requests.exceptions.RequestException as e:
-        click.echo(
-            click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red")
-        )
+        click.echo(click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red"))
         sys.exit(1)
 
     with click.progressbar(
@@ -708,8 +706,12 @@ def visualize_graph(url: str, layout: str) -> None:
                 pass
 
             try:
-                collections_endpoint = urljoin(url, f"/catalogs/{current_id}/collections")
-                collections = _fetch_all_paginated(session, collections_endpoint, "collections")
+                collections_endpoint = urljoin(
+                    url, f"/catalogs/{current_id}/collections"
+                )
+                collections = _fetch_all_paginated(
+                    session, collections_endpoint, "collections"
+                )
 
                 for collection in collections:
                     collection_id = collection["id"]
@@ -740,6 +742,13 @@ def visualize_graph(url: str, layout: str) -> None:
         if root != "ROOT":
             dag.add_edge("ROOT", root)
 
+    try:
+        node_levels = nx.single_source_shortest_path_length(dag, "ROOT")
+        for node_id, level_depth in node_levels.items():
+            dag.nodes[node_id]["level"] = level_depth
+    except Exception as e:
+        click.secho(f"⚠️ Could not strictly align levels: {e}", fg="yellow")
+
     for node in dag.nodes:
         if node == "ROOT":
             continue
@@ -767,7 +776,11 @@ def visualize_graph(url: str, layout: str) -> None:
     click.echo(click.style("\n🎨 Rendering the visualization...", fg="cyan"))
 
     net = Network(
-        height="100vh", width="100%", directed=True, bgcolor="#121212", font_color="white"
+        height="100vh",
+        width="100%",
+        directed=True,
+        bgcolor="#121212",
+        font_color="white",
     )
     net.from_nx(dag)
 
@@ -941,36 +954,36 @@ def visualize_graph(url: str, layout: str) -> None:
         html_content = f.read()
 
     legend_html = """
-    <div style="position: fixed; top: 20px; right: 20px; background-color: rgba(18, 18, 18, 0.95); 
-                border: 2px solid #666; border-radius: 8px; padding: 15px; z-index: 1000; 
+    <div style="position: fixed; top: 20px; right: 20px; background-color: rgba(18, 18, 18, 0.95);
+                border: 2px solid #666; border-radius: 8px; padding: 15px; z-index: 1000;
                 font-family: monospace; color: white; max-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 8px;">
             SFEOS Topology Legend
         </div>
         <div style="font-size: 12px; line-height: 1.8;">
             <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff0040; 
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff0040;
                             border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
                 <span>Virtual Root API</span>
             </div>
             <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #2196F3; 
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #2196F3;
                             border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
                 <span>Standard Catalog</span>
             </div>
             <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #4CAF50; 
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #4CAF50;
                             border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
                 <span>Leaf Catalog</span>
             </div>
             <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #9C27B0; 
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #9C27B0;
                             margin-right: 8px; vertical-align: middle;"></span>
                 <span>Collection</span>
             </div>
             <div style="margin-bottom: 0;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff9800; 
-                            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%); 
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff9800;
+                            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
                             margin-right: 8px; vertical-align: middle;"></span>
                 <span>Poly-Linked Node</span>
             </div>
@@ -985,12 +998,12 @@ def visualize_graph(url: str, layout: str) -> None:
             network.on("stabilizationIterationsDone", function() {
                 drawLevelSeparators();
             });
-            
+
             function drawLevelSeparators() {
                 var canvas = network.canvas.canvas;
                 var ctx = canvas.getContext('2d');
                 var nodes = network.body.nodes;
-                
+
                 // Group nodes by their y-position (level)
                 var levels = {};
                 for (var nodeId in nodes) {
@@ -999,17 +1012,17 @@ def visualize_graph(url: str, layout: str) -> None:
                     if (!levels[y]) levels[y] = [];
                     levels[y].push(node);
                 }
-                
+
                 // Draw separators
                 var sortedLevels = Object.keys(levels).sort((a, b) => a - b);
                 for (var i = 0; i < sortedLevels.length - 1; i++) {
                     var currentY = parseFloat(sortedLevels[i]);
                     var nextY = parseFloat(sortedLevels[i + 1]);
                     var midY = (currentY + nextY) / 2;
-                    
+
                     // Convert world coordinates to canvas coordinates
                     var canvasY = network.canvas.canvasToDOM({x: 0, y: midY}).y;
-                    
+
                     ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
                     ctx.lineWidth = 1;
                     ctx.setLineDash([5, 5]);
@@ -1020,7 +1033,7 @@ def visualize_graph(url: str, layout: str) -> None:
                     ctx.setLineDash([]);
                 }
             }
-            
+
             // Redraw on pan/zoom
             network.on("zoom", drawLevelSeparators);
             network.on("pan", drawLevelSeparators);
@@ -1028,7 +1041,9 @@ def visualize_graph(url: str, layout: str) -> None:
     </script>
     """
 
-    html_content = html_content.replace("</body>", level_separators_js + legend_html + "\n</body>")
+    html_content = html_content.replace(
+        "</body>", level_separators_js + legend_html + "\n</body>"
+    )
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(html_content)

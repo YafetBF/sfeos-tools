@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
-from sfeos_tools.cli import cli, _fetch_all_paginated
+from sfeos_tools.cli import _fetch_all_paginated, cli
 
 
 class TestFetchAllPaginated:
@@ -21,7 +21,9 @@ class TestFetchAllPaginated:
         }
         mock_session.get.return_value = mock_response
 
-        result = _fetch_all_paginated(mock_session, "http://localhost:8080/catalogs", "catalogs")
+        result = _fetch_all_paginated(
+            mock_session, "http://localhost:8080/catalogs", "catalogs"
+        )
 
         assert len(result) == 2
         assert result[0]["id"] == "cat-1"
@@ -34,7 +36,9 @@ class TestFetchAllPaginated:
         page1_response = MagicMock()
         page1_response.json.return_value = {
             "catalogs": [{"id": "cat-1"}, {"id": "cat-2"}],
-            "links": [{"rel": "next", "href": "http://localhost:8080/catalogs?token=page2"}],
+            "links": [
+                {"rel": "next", "href": "http://localhost:8080/catalogs?token=page2"}
+            ],
         }
 
         page2_response = MagicMock()
@@ -45,7 +49,9 @@ class TestFetchAllPaginated:
 
         mock_session.get.side_effect = [page1_response, page2_response]
 
-        result = _fetch_all_paginated(mock_session, "http://localhost:8080/catalogs", "catalogs")
+        result = _fetch_all_paginated(
+            mock_session, "http://localhost:8080/catalogs", "catalogs"
+        )
 
         assert len(result) == 3
         assert result[0]["id"] == "cat-1"
@@ -83,7 +89,9 @@ class TestFetchAllPaginated:
 
         mock_session.get.side_effect = [page1_response, page2_response, page3_response]
 
-        result = _fetch_all_paginated(mock_session, "http://localhost:8080/catalogs", "catalogs")
+        result = _fetch_all_paginated(
+            mock_session, "http://localhost:8080/catalogs", "catalogs"
+        )
 
         assert len(result) == 5
         assert result[0]["id"] == "cat-1"
@@ -114,7 +122,9 @@ class TestCrawlGraph:
             mock_session_class.return_value = mock_session
             mock_session.get.side_effect = Exception("Connection refused")
 
-            result = runner.invoke(cli, ["crawl-graph", "--url", "http://localhost:8080"])
+            result = runner.invoke(
+                cli, ["crawl-graph", "--url", "http://localhost:8080"]
+            )
 
             assert result.exit_code != 0
             assert "Failed to reach" in result.output
@@ -140,7 +150,10 @@ class TestCrawlGraph:
             mock_children_response.json.return_value = {"children": [], "links": []}
 
             mock_collections_response = MagicMock()
-            mock_collections_response.json.return_value = {"collections": [], "links": []}
+            mock_collections_response.json.return_value = {
+                "collections": [],
+                "links": [],
+            }
 
             mock_session.get.side_effect = [
                 mock_catalogs_response,
@@ -150,7 +163,9 @@ class TestCrawlGraph:
                 mock_collections_response,
             ]
 
-            result = runner.invoke(cli, ["crawl-graph", "--url", "http://localhost:8080"])
+            result = runner.invoke(
+                cli, ["crawl-graph", "--url", "http://localhost:8080"]
+            )
 
             assert result.exit_code == 0
             assert "Crawl complete!" in result.output
@@ -189,7 +204,8 @@ class TestCrawlGraph:
             ]
 
             result = runner.invoke(
-                cli, ["crawl-graph", "--url", "http://localhost:8080", "--output", "json"]
+                cli,
+                ["crawl-graph", "--url", "http://localhost:8080", "--output", "json"],
             )
 
             assert result.exit_code == 0
@@ -232,7 +248,9 @@ class TestCrawlGraph:
                 collections_response,
             ]
 
-            result = runner.invoke(cli, ["crawl-graph", "--url", "http://localhost:8080"])
+            result = runner.invoke(
+                cli, ["crawl-graph", "--url", "http://localhost:8080"]
+            )
 
             assert result.exit_code == 0
             assert "Discovered 2 entities" in result.output
@@ -267,7 +285,9 @@ class TestCrawlGraph:
                         }
                     elif "child-catalog" in url:
                         resp.json.return_value = {
-                            "children": [{"id": "grandchild-catalog", "type": "Catalog"}]
+                            "children": [
+                                {"id": "grandchild-catalog", "type": "Catalog"}
+                            ]
                         }
                     else:
                         resp.json.return_value = {"children": []}
@@ -285,7 +305,9 @@ class TestCrawlGraph:
                 response_factory("grandchild-catalog/collections"),
             ]
 
-            result = runner.invoke(cli, ["crawl-graph", "--url", "http://localhost:8080"])
+            result = runner.invoke(
+                cli, ["crawl-graph", "--url", "http://localhost:8080"]
+            )
 
             assert result.exit_code == 0
             assert "Discovered 3 entities" in result.output
@@ -313,7 +335,11 @@ class TestCrawlGraph:
 
             def response_factory(url):
                 resp = MagicMock()
-                resp.json.return_value = {"children": [], "collections": [], "links": []}
+                resp.json.return_value = {
+                    "children": [],
+                    "collections": [],
+                    "links": [],
+                }
                 if "/children" in url:
                     if "parent-a" in url:
                         resp.json.return_value = {
@@ -341,7 +367,9 @@ class TestCrawlGraph:
                 response_factory("shared-child/collections"),
             ]
 
-            result = runner.invoke(cli, ["crawl-graph", "--url", "http://localhost:8080"])
+            result = runner.invoke(
+                cli, ["crawl-graph", "--url", "http://localhost:8080"]
+            )
 
             assert result.exit_code == 0
             assert "Discovered 3 entities" in result.output
@@ -392,7 +420,9 @@ class TestVisualizeGraph:
 
         mock_session.get.side_effect = [catalogs_response, children_response]
 
-        result = runner.invoke(cli, ["visualize-graph", "--url", "http://localhost:8080"])
+        result = runner.invoke(
+            cli, ["visualize-graph", "--url", "http://localhost:8080"]
+        )
 
         assert result.exit_code == 0
         assert "Crawling" in result.output
@@ -402,7 +432,9 @@ class TestVisualizeGraph:
 
     @patch("sfeos_tools.cli.webbrowser.open")
     @patch("sfeos_tools.cli.requests.Session")
-    def test_visualize_graph_detects_poly_hierarchy(self, mock_session_class, mock_browser):
+    def test_visualize_graph_detects_poly_hierarchy(
+        self, mock_session_class, mock_browser
+    ):
         """Test that visualize-graph highlights poly-hierarchical nodes."""
         runner = CliRunner()
         mock_session = MagicMock()
@@ -423,12 +455,24 @@ class TestVisualizeGraph:
             resp.json.return_value = {"children": [], "links": []}
             if "parent-a" in url:
                 resp.json.return_value = {
-                    "children": [{"id": "shared-child", "title": "Shared Child", "type": "Catalog"}],
+                    "children": [
+                        {
+                            "id": "shared-child",
+                            "title": "Shared Child",
+                            "type": "Catalog",
+                        }
+                    ],
                     "links": [],
                 }
             elif "parent-b" in url:
                 resp.json.return_value = {
-                    "children": [{"id": "shared-child", "title": "Shared Child", "type": "Catalog"}],
+                    "children": [
+                        {
+                            "id": "shared-child",
+                            "title": "Shared Child",
+                            "type": "Catalog",
+                        }
+                    ],
                     "links": [],
                 }
             return resp
@@ -440,7 +484,9 @@ class TestVisualizeGraph:
             children_response_factory("shared-child"),
         ]
 
-        result = runner.invoke(cli, ["visualize-graph", "--url", "http://localhost:8080"])
+        result = runner.invoke(
+            cli, ["visualize-graph", "--url", "http://localhost:8080"]
+        )
 
         assert result.exit_code == 0
         assert "Dashboard opened" in result.output

@@ -6,6 +6,8 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-04-22
+
 ### Added
 
 - Added `crawl-graph` command to crawl SFEOS Multi-Tenant Catalogs and Collections, building and displaying the DAG with support for poly-hierarchies. Features include STAC-compliant pagination (both `rel="next"` links and limit/offset), mathematically-deduced root catalog detection using NetworkX `in_degree()`, safe poly-hierarchy visualization with `(🔗 Poly-Linked)` indicators, and dual output formats (text tree and JSON graph). Requires optional `networkx` dependency (installable via `pip install sfeos-tools[crawler]`).
@@ -74,7 +76,8 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 - Initial release
 
-[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.5.0..main
+[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.6.0..main
+[v0.6.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.2.0...v0.3.0
