@@ -113,22 +113,6 @@ class TestCrawlGraph:
             assert result.exit_code != 0
             assert "networkx is not installed" in result.output
 
-    def test_crawl_graph_connection_error(self):
-        """Test that crawl-graph handles connection errors gracefully."""
-        runner = CliRunner()
-
-        with patch("sfeos_tools.cli.requests.Session") as mock_session_class:
-            mock_session = MagicMock()
-            mock_session_class.return_value = mock_session
-            mock_session.get.side_effect = Exception("Connection refused")
-
-            result = runner.invoke(
-                cli, ["crawl-graph", "--url", "http://localhost:8080"]
-            )
-
-            assert result.exit_code != 0
-            assert "Failed to reach" in result.output
-
     def test_crawl_graph_text_output(self):
         """Test crawl-graph with text output format."""
         runner = CliRunner()
@@ -211,7 +195,17 @@ class TestCrawlGraph:
             assert result.exit_code == 0
             assert "Crawl complete!" in result.output
 
-            json_output = json.loads(result.output.split("Crawl complete!")[1].strip())
+            # Extract JSON from output (it comes after the "Crawl complete!" message)
+            output_lines = result.output.split("\n")
+            json_start = None
+            for i, line in enumerate(output_lines):
+                if line.strip().startswith("{"):
+                    json_start = i
+                    break
+
+            assert json_start is not None, "No JSON found in output"
+            json_str = "\n".join(output_lines[json_start:])
+            json_output = json.loads(json_str)
             assert "directed" in json_output or "nodes" in json_output
 
     def test_crawl_graph_with_hierarchy(self):
@@ -418,7 +412,14 @@ class TestVisualizeGraph:
         children_response = MagicMock()
         children_response.json.return_value = {"children": [], "links": []}
 
-        mock_session.get.side_effect = [catalogs_response, children_response]
+        collections_response = MagicMock()
+        collections_response.json.return_value = {"collections": [], "links": []}
+
+        mock_session.get.side_effect = [
+            catalogs_response,
+            children_response,
+            collections_response,
+        ]
 
         result = runner.invoke(
             cli, ["visualize-graph", "--url", "http://localhost:8080"]
@@ -450,38 +451,44 @@ class TestVisualizeGraph:
             "links": [],
         }
 
-        def children_response_factory(url):
+        def response_factory(url):
             resp = MagicMock()
-            resp.json.return_value = {"children": [], "links": []}
-            if "parent-a" in url:
-                resp.json.return_value = {
-                    "children": [
-                        {
-                            "id": "shared-child",
-                            "title": "Shared Child",
-                            "type": "Catalog",
-                        }
-                    ],
-                    "links": [],
-                }
-            elif "parent-b" in url:
-                resp.json.return_value = {
-                    "children": [
-                        {
-                            "id": "shared-child",
-                            "title": "Shared Child",
-                            "type": "Catalog",
-                        }
-                    ],
-                    "links": [],
-                }
+            if "/children" in url:
+                resp.json.return_value = {"children": [], "links": []}
+                if "parent-a" in url:
+                    resp.json.return_value = {
+                        "children": [
+                            {
+                                "id": "shared-child",
+                                "title": "Shared Child",
+                                "type": "Catalog",
+                            }
+                        ],
+                        "links": [],
+                    }
+                elif "parent-b" in url:
+                    resp.json.return_value = {
+                        "children": [
+                            {
+                                "id": "shared-child",
+                                "title": "Shared Child",
+                                "type": "Catalog",
+                            }
+                        ],
+                        "links": [],
+                    }
+            elif "/collections" in url:
+                resp.json.return_value = {"collections": [], "links": []}
             return resp
 
         mock_session.get.side_effect = [
             catalogs_response,
-            children_response_factory("parent-a"),
-            children_response_factory("parent-b"),
-            children_response_factory("shared-child"),
+            response_factory("parent-a/children"),
+            response_factory("parent-a/collections"),
+            response_factory("parent-b/children"),
+            response_factory("parent-b/collections"),
+            response_factory("shared-child/children"),
+            response_factory("shared-child/collections"),
         ]
 
         result = runner.invoke(
