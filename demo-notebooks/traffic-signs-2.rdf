@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+    xmlns:schema="http://schema.org/"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:dct="http://purl.org/dc/terms/"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+
+<rdf:Description rdf:about="https://mock.gis.int/concepts/concept_scheme/traffic-signs-v2">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#ConceptScheme"/>
+    <dct:title xml:lang="en">GIS Traffic Signs Taxonomy V2 (Complex)</dct:title>
+    <dct:description xml:lang="en">A highly complex DAG testing diamond dependencies, triple-parents, and disjoint graphs.</dct:description>
+    <skos:hasTopConcept rdf:resource="https://mock.gis.int/concept/traffic-signs"/>
+    <skos:hasTopConcept rdf:resource="https://mock.gis.int/concept/road-markings"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/traffic-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Traffic Signs</skos:prefLabel>
+    <skos:topConceptOf rdf:resource="https://mock.gis.int/concepts/concept_scheme/traffic-signs-v2"/>
+    <skos:narrower rdf:resource="https://mock.gis.int/concept/permanent-signs"/>
+    <skos:narrower rdf:resource="https://mock.gis.int/concept/temporary-signs"/>
+    <skos:narrower rdf:resource="https://mock.gis.int/concept/electronic-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/road-markings">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Road Markings</skos:prefLabel>
+    <skos:definition xml:lang="en">Painted markers on the road surface. Physically separate from signs.</skos:definition>
+    <skos:topConceptOf rdf:resource="https://mock.gis.int/concepts/concept_scheme/traffic-signs-v2"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/permanent-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Permanent Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/traffic-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/temporary-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Temporary Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/traffic-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/electronic-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Electronic Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/traffic-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/regulatory-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Regulatory Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/permanent-signs"/>
+    <skos:narrower rdf:resource="https://mock.gis.int/concept/speed-limits"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/construction-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Construction Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/temporary-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/warning-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Warning Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/permanent-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/informational-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Informational Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/permanent-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/tourist-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Tourist Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/informational-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/historic-site-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Historic Site Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/tourist-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/unesco-heritage-signs">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">UNESCO Heritage Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/historic-site-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/speed-limits">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Speed Limit Signs</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/regulatory-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/dynamic-speed-limits">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Dynamic Speed Limits</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/speed-limits"/>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/electronic-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/work-zone-speed-limit">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">Work Zone Speed Limit</skos:prefLabel>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/speed-limits"/>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/construction-signs"/>
+</rdf:Description>
+
+<rdf:Description rdf:about="https://mock.gis.int/concept/variable-message-incident-warning">
+    <rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
+    <skos:prefLabel xml:lang="en">VMS Incident Warning</skos:prefLabel>
+    <skos:definition xml:lang="en">A temporary, electronic message board warning of an active incident.</skos:definition>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/temporary-signs"/>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/electronic-signs"/>
+    <skos:broader rdf:resource="https://mock.gis.int/concept/warning-signs"/>
+</rdf:Description>
+
+</rdf:RDF>

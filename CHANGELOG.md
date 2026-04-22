@@ -6,9 +6,16 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-04-22
+
 ### Added
 
+- Added `crawl-graph` command to crawl SFEOS Multi-Tenant Catalogs and Collections, building and displaying the DAG with support for poly-hierarchies. Features include STAC-compliant pagination (both `rel="next"` links and limit/offset), mathematically-deduced root catalog detection using NetworkX `in_degree()`, safe poly-hierarchy visualization with `(🔗 Poly-Linked)` indicators, and dual output formats (text tree and JSON graph). Requires optional `networkx` dependency (installable via `pip install sfeos-tools[crawler]`).
+- Added `visualize-graph` command to generate an interactive, physics-simulated web visualization of the SFEOS catalog hierarchy. Features include drag-and-drop node manipulation, automatic browser launch, color-coded nodes (blue for standard catalogs, green for leaf nodes, orange diamonds for poly-hierarchical nodes), and hierarchical tree layout. Requires optional `pyvis` dependency (installable via `pip install sfeos-tools[visualizer]`).
+
 ### Updated
+
+- Fixed poly-hierarchy support in `ingest_from_xml()` to properly handle nodes with multiple parents. Changed hierarchy mapping from single parent (`g.value()`) to multiple parents (`g.objects()`), ensuring all parent-child relationships are created via POST requests to `/catalogs/{parent_id}/catalogs`. This enables complete DAG ingestion for complex taxonomies with diamond dependencies and multi-parent nodes.
 
 ## [v0.5.0] - 2026-04-18
 
@@ -69,7 +76,8 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 - Initial release
 
-[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.5.0..main
+[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.6.0..main
+[v0.6.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.2.0...v0.3.0

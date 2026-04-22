@@ -9,11 +9,25 @@ Usage:
 """
 
 import asyncio
+import json
 import logging
+import os
 import sys
+import webbrowser
+from urllib.parse import urljoin
 
 import click
 import requests
+
+try:
+    import networkx as nx
+except ImportError:
+    nx = None
+
+try:
+    from pyvis.network import Network
+except ImportError:
+    Network = None
 
 try:
     from importlib.metadata import version as _get_version
@@ -389,6 +403,660 @@ def viewer(stac_url: str, port: int) -> None:
         error_msg = str(e)
         click.echo(click.style(f"✗ Failed to start viewer: {error_msg}", fg="red"))
         sys.exit(1)
+
+
+def _fetch_all_paginated(
+    session: requests.Session, initial_url: str, items_key: str
+) -> list:
+    """Help exhaust a STAC paginated endpoint by following 'next' links.
+
+    Handles both traditional STAC pagination (rel="next" links) and limit-based
+    pagination (numberMatched/numberReturned fields).
+
+    Args:
+        session: Requests session for HTTP calls
+        initial_url: Starting URL for the paginated endpoint
+        items_key: Key in the JSON response containing the items (e.g., 'catalogs', 'children')
+
+    Returns:
+        List of all items across all pages
+    """
+    items = []
+    next_url = initial_url
+
+    while next_url:
+        try:
+            response = session.get(next_url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            items.extend(data.get(items_key, []))
+
+            links = data.get("links", [])
+            next_link = next(
+                (link for link in links if link.get("rel") == "next"), None
+            )
+
+            if next_link:
+                next_url = next_link["href"]
+            else:
+                number_matched = data.get("numberMatched")
+                number_returned = data.get("numberReturned")
+
+                if (
+                    number_matched is not None
+                    and number_returned is not None
+                    and len(items) < number_matched
+                ):
+                    limit = number_returned
+                    offset = len(items)
+                    separator = "&" if "?" in initial_url else "?"
+                    next_url = f"{initial_url}{separator}limit={limit}&offset={offset}"
+                else:
+                    next_url = None
+
+        except requests.exceptions.RequestException:
+            break
+
+    return items
+
+
+@cli.command("crawl-graph")
+@click.option(
+    "--url",
+    default="http://localhost:8080",
+    help="The base URL of the SFEOS API.",
+)
+@click.option(
+    "--output",
+    type=click.Choice(["text", "json"]),
+    default="text",
+    help="Format to display the graph.",
+)
+def crawl_graph(url: str, output: str) -> None:
+    """Crawl the SFEOS Multi-Tenant Catalogs and Collections to build and display the DAG.
+
+    This command traverses the SFEOS API hierarchy, discovering all catalogs and
+    collections regardless of whether the backend has a dedicated graph endpoint.
+    It automatically detects true root catalogs by analyzing graph structure and
+    handles STAC-compliant pagination to ensure no entities are missed.
+
+    Examples:
+        sfeos-tools crawl-graph
+        sfeos-tools crawl-graph --url http://localhost:8080
+        sfeos-tools crawl-graph --url https://my-sfeos-api.com --output json
+    """
+    if nx is None:
+        click.echo(
+            click.style(
+                "✗ networkx is not installed. Install with: pip install networkx",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    click.echo(click.style(f"🌲 Crawling SFEOS Multi-Tenant API at {url}...", fg="cyan"))
+
+    dag = nx.DiGraph()
+    session = requests.Session()
+
+    catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
+    try:
+        all_catalogs = _fetch_all_paginated(session, catalogs_endpoint, "catalogs")
+
+        for catalog in all_catalogs:
+            dag.add_node(catalog["id"], type="Catalog")
+
+    except requests.exceptions.RequestException as e:
+        click.echo(click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red"))
+        sys.exit(1)
+
+    with click.progressbar(
+        all_catalogs, label="Traversing Hierarchy", show_pos=True
+    ) as bar:
+        for catalog in bar:
+            current_id = catalog["id"]
+
+            try:
+                children_endpoint = urljoin(url, f"/catalogs/{current_id}/children")
+                children = _fetch_all_paginated(session, children_endpoint, "children")
+
+                for child in children:
+                    child_id = child["id"]
+                    child_type = child.get("type", "Unknown")
+
+                    if child_id not in dag:
+                        dag.add_node(child_id, type=child_type)
+
+                    dag.add_edge(current_id, child_id)
+
+            except requests.exceptions.RequestException:
+                click.echo(
+                    click.style(
+                        f"\n⚠️ Failed to fetch children for {current_id}",
+                        fg="yellow",
+                    )
+                )
+
+            try:
+                collections_endpoint = urljoin(
+                    url, f"/catalogs/{current_id}/collections"
+                )
+                collections = _fetch_all_paginated(
+                    session, collections_endpoint, "collections"
+                )
+
+                for collection in collections:
+                    collection_id = collection["id"]
+
+                    if collection_id not in dag:
+                        dag.add_node(collection_id, type="Collection")
+
+                    dag.add_edge(current_id, collection_id)
+
+            except requests.exceptions.RequestException:
+                pass
+
+    true_roots = [n for n, d in dag.in_degree() if d == 0]
+
+    dag.add_node("ROOT", type="Virtual")
+    for root in true_roots:
+        dag.add_edge("ROOT", root)
+
+    click.echo(
+        click.style(
+            f"\n✅ Crawl complete! Discovered {dag.number_of_nodes() - 1} entities.",
+            fg="green",
+        )
+    )
+
+    if output == "json":
+        graph_json = nx.node_link_data(dag)
+        click.echo(json.dumps(graph_json, indent=2))
+    else:
+        click.echo(click.style("\n--- SFEOS Topology ---", fg="cyan", bold=True))
+        _print_tree(dag, "ROOT", level=0, printed_nodes=set())
+
+
+def _print_tree(
+    graph: nx.DiGraph, node_id: str, level: int, printed_nodes: set
+) -> None:
+    """Recursively prints a terminal-friendly tree view of the graph.
+
+    Handles poly-hierarchies safely by tracking printed nodes. If a node has
+    multiple parents and is reached via a second parent, it displays a poly-link
+    indicator instead of recursing again.
+
+    Args:
+        graph: NetworkX DiGraph of the catalog hierarchy
+        node_id: Current node to print
+        level: Current depth level for indentation
+        printed_nodes: Set of nodes already fully printed (to prevent infinite loops)
+    """
+    indent = "  " * level
+    if level > 0:
+        node_data = graph.nodes.get(node_id, {})
+        node_type = node_data.get("type", "Unknown")
+        icon = "📁" if node_type == "Catalog" else "📄"
+
+        if node_id in printed_nodes:
+            click.echo(f"{indent}└─ {icon} {node_id} (🔗 Poly-Linked)")
+            return
+
+        click.echo(f"{indent}└─ {icon} {node_id}")
+        printed_nodes.add(node_id)
+
+    children = list(graph.successors(node_id))
+    for child in sorted(children):
+        _print_tree(graph, child, level + 1, printed_nodes)
+
+
+@cli.command("visualize-graph")
+@click.option(
+    "--url",
+    default="http://localhost:8080",
+    help="The base URL of the SFEOS API.",
+)
+@click.option(
+    "--layout",
+    type=click.Choice(
+        ["hierarchical", "hierarchical-lr", "force", "spring"], case_sensitive=False
+    ),
+    default="hierarchical",
+    help="Graph layout style: hierarchical (top-to-bottom tree), hierarchical-lr (left-to-right tree), force (physics-based), or spring (organic).",
+)
+def visualize_graph(url: str, layout: str) -> None:
+    """Crawl SFEOS API and open an interactive web visualization of the DAG.
+
+    This command builds a physics-simulated, drag-and-drop HTML dashboard showing
+    the complete catalog hierarchy. Poly-hierarchical nodes are highlighted as
+    orange diamonds, and the visualization opens automatically in your browser.
+
+    Examples:
+        sfeos-tools visualize-graph
+        sfeos-tools visualize-graph --url http://localhost:8080
+        sfeos-tools visualize-graph --layout hierarchical-lr
+        sfeos-tools visualize-graph --layout force
+        sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout spring
+    """
+    if nx is None:
+        click.echo(
+            click.style(
+                "✗ networkx is not installed. Install with: pip install networkx",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    if Network is None:
+        click.echo(
+            click.style(
+                "✗ pyvis is not installed. Install with: pip install sfeos-tools[visualizer]",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    click.echo(click.style(f"🕸️ Crawling {url} for visualization...", fg="cyan"))
+
+    dag = nx.DiGraph()
+    session = requests.Session()
+
+    catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
+    try:
+        all_catalogs = _fetch_all_paginated(session, catalogs_endpoint, "catalogs")
+
+        for catalog in all_catalogs:
+            dag.add_node(
+                catalog["id"],
+                label=catalog.get("title", catalog["id"]),
+                title=f"ID: {catalog['id']}",
+                type="Catalog",
+            )
+
+    except requests.exceptions.RequestException as e:
+        click.echo(click.style(f"❌ Failed to reach {catalogs_endpoint}: {e}", fg="red"))
+        sys.exit(1)
+
+    with click.progressbar(
+        all_catalogs, label="Building Web Graph", show_pos=True
+    ) as bar:
+        for catalog in bar:
+            current_id = catalog["id"]
+
+            try:
+                children_endpoint = urljoin(url, f"/catalogs/{current_id}/children")
+                children = _fetch_all_paginated(session, children_endpoint, "children")
+
+                for child in children:
+                    child_id = child["id"]
+                    child_type = child.get("type", "Unknown")
+
+                    if child_id not in dag:
+                        dag.add_node(
+                            child_id,
+                            label=child.get("title", child_id),
+                            title=f"ID: {child_id}",
+                            type=child_type,
+                        )
+
+                    dag.add_edge(current_id, child_id)
+
+            except requests.exceptions.RequestException:
+                pass
+
+            try:
+                collections_endpoint = urljoin(
+                    url, f"/catalogs/{current_id}/collections"
+                )
+                collections = _fetch_all_paginated(
+                    session, collections_endpoint, "collections"
+                )
+
+                for collection in collections:
+                    collection_id = collection["id"]
+
+                    if collection_id not in dag:
+                        dag.add_node(
+                            collection_id,
+                            label=collection.get("title", collection_id),
+                            title=f"ID: {collection_id}",
+                            type="Collection",
+                        )
+
+                    dag.add_edge(current_id, collection_id)
+
+            except requests.exceptions.RequestException:
+                pass
+
+    true_roots = [n for n, d in dag.in_degree() if d == 0]
+
+    dag.add_node(
+        "ROOT",
+        label="🌐 STAC API",
+        title="Virtual Root Node",
+        color="#ff0040",
+        size=30,
+    )
+    for root in true_roots:
+        if root != "ROOT":
+            dag.add_edge("ROOT", root)
+
+    try:
+        node_levels = nx.single_source_shortest_path_length(dag, "ROOT")
+        for node_id, level_depth in node_levels.items():
+            dag.nodes[node_id]["level"] = level_depth
+    except Exception as e:
+        click.secho(f"⚠️ Could not strictly align levels: {e}", fg="yellow")
+
+    for node in dag.nodes:
+        if node == "ROOT":
+            continue
+
+        node_type = dag.nodes[node].get("type", "Unknown")
+        in_edges = dag.in_degree(node)
+        out_edges = dag.out_degree(node)
+
+        if in_edges > 1:
+            dag.nodes[node]["color"] = "#ff9800"
+            dag.nodes[node]["shape"] = "diamond"
+            dag.nodes[node]["size"] = 32
+            dag.nodes[node]["title"] += " (Poly-Linked)"
+        elif node_type == "Collection":
+            dag.nodes[node]["color"] = "#9C27B0"
+            dag.nodes[node]["shape"] = "box"
+            dag.nodes[node]["size"] = 28
+        elif out_edges == 0:
+            dag.nodes[node]["color"] = "#4CAF50"
+            dag.nodes[node]["size"] = 25
+        else:
+            dag.nodes[node]["color"] = "#2196F3"
+            dag.nodes[node]["size"] = 28
+
+    click.echo(click.style("\n🎨 Rendering the visualization...", fg="cyan"))
+
+    net = Network(
+        height="100vh",
+        width="100%",
+        directed=True,
+        bgcolor="#121212",
+        font_color="white",
+    )
+    net.from_nx(dag)
+
+    layout_lower = layout.lower()
+
+    if layout_lower == "hierarchical":
+        options_js = """
+    var options = {
+      "physics": {
+        "hierarchicalRepulsion": {
+          "centralGravity": 0.0,
+          "springLength": 200,
+          "springConstant": 0.01,
+          "nodeDistance": 200,
+          "damping": 0.09
+        },
+        "solver": "hierarchicalRepulsion"
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "direction": "UD",
+          "sortMethod": "directed",
+          "nodeSpacing": 300
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 13
+        },
+        "smooth": {
+          "type": "linear"
+        }
+      }
+    }
+    """
+    elif layout_lower == "hierarchical-lr":
+        options_js = """
+    var options = {
+      "physics": {
+        "hierarchicalRepulsion": {
+          "centralGravity": 0.0,
+          "springLength": 200,
+          "springConstant": 0.01,
+          "nodeDistance": 200,
+          "damping": 0.09
+        },
+        "solver": "hierarchicalRepulsion"
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": true,
+          "direction": "LR",
+          "sortMethod": "directed",
+          "nodeSpacing": 300
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 13
+        },
+        "smooth": {
+          "type": "linear"
+        }
+      }
+    }
+    """
+    elif layout_lower == "force":
+        options_js = """
+    var options = {
+      "physics": {
+        "forceAtlas2Based": {
+          "gravitationalConstant": -50,
+          "centralGravity": 0.01,
+          "springLength": 200,
+          "springConstant": 0.08,
+          "damping": 0.4,
+          "avoidOverlap": 0.5
+        },
+        "solver": "forceAtlas2Based",
+        "timestep": 0.35,
+        "stabilization": {
+          "iterations": 150
+        }
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": false
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 13
+        }
+      }
+    }
+    """
+    else:  # spring
+        options_js = """
+    var options = {
+      "physics": {
+        "barnesHut": {
+          "gravitationalConstant": -30000,
+          "centralGravity": 0.3,
+          "springLength": 200,
+          "springConstant": 0.04,
+          "damping": 0.3,
+          "avoidOverlap": 0.5
+        },
+        "solver": "barnesHut",
+        "timestep": 0.5,
+        "stabilization": {
+          "iterations": 200
+        }
+      },
+      "layout": {
+        "hierarchical": {
+          "enabled": false
+        }
+      },
+      "nodes": {
+        "font": {
+          "size": 16,
+          "face": "monospace",
+          "bold": {
+            "size": 17
+          }
+        }
+      },
+      "edges": {
+        "font": {
+          "size": 13
+        }
+      }
+    }
+    """
+
+    net.set_options(options_js)
+
+    output_file = "sfeos_topology.html"
+    net.write_html(output_file)
+
+    with open(output_file, "r", encoding="utf-8") as f:
+        html_content = f.read()
+
+    legend_html = """
+    <div style="position: fixed; top: 20px; right: 20px; background-color: rgba(18, 18, 18, 0.95);
+                border: 2px solid #666; border-radius: 8px; padding: 15px; z-index: 1000;
+                font-family: monospace; color: white; max-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 8px;">
+            SFEOS Topology Legend
+        </div>
+        <div style="font-size: 12px; line-height: 1.8;">
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff0040;
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Virtual Root API</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #2196F3;
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Standard Catalog</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #4CAF50;
+                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
+                <span>Leaf Catalog</span>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #9C27B0;
+                            margin-right: 8px; vertical-align: middle;"></span>
+                <span>Collection</span>
+            </div>
+            <div style="margin-bottom: 0;">
+                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff9800;
+                            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+                            margin-right: 8px; vertical-align: middle;"></span>
+                <span>Poly-Linked Node</span>
+            </div>
+        </div>
+    </div>
+    """
+
+    level_separators_js = """
+    <script type="text/javascript">
+        // Draw level separators for hierarchical layout
+        if (network.options.layout.hierarchical && network.options.layout.hierarchical.enabled) {
+            network.on("stabilizationIterationsDone", function() {
+                drawLevelSeparators();
+            });
+
+            function drawLevelSeparators() {
+                var canvas = network.canvas.canvas;
+                var ctx = canvas.getContext('2d');
+                var nodes = network.body.nodes;
+
+                // Group nodes by their y-position (level)
+                var levels = {};
+                for (var nodeId in nodes) {
+                    var node = nodes[nodeId];
+                    var y = Math.round(node.y / 10) * 10; // Group by approximate y
+                    if (!levels[y]) levels[y] = [];
+                    levels[y].push(node);
+                }
+
+                // Draw separators
+                var sortedLevels = Object.keys(levels).sort((a, b) => a - b);
+                for (var i = 0; i < sortedLevels.length - 1; i++) {
+                    var currentY = parseFloat(sortedLevels[i]);
+                    var nextY = parseFloat(sortedLevels[i + 1]);
+                    var midY = (currentY + nextY) / 2;
+
+                    // Convert world coordinates to canvas coordinates
+                    var canvasY = network.canvas.canvasToDOM({x: 0, y: midY}).y;
+
+                    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(0, canvasY);
+                    ctx.lineTo(canvas.width, canvasY);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // Redraw on pan/zoom
+            network.on("zoom", drawLevelSeparators);
+            network.on("pan", drawLevelSeparators);
+        }
+    </script>
+    """
+
+    html_content = html_content.replace(
+        "</body>", level_separators_js + legend_html + "\n</body>"
+    )
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    filepath = f"file://{os.path.abspath(output_file)}"
+    webbrowser.open(filepath)
+
+    click.echo(
+        click.style(
+            f"✅ Dashboard opened in your browser! (saved to {output_file})",
+            fg="green",
+        )
+    )
 
 
 if __name__ == "__main__":
