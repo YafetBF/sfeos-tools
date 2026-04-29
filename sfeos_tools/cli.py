@@ -18,6 +18,7 @@ from urllib.parse import urljoin
 
 import click
 import requests
+from .cli_options import validate_auth
 
 try:
     import networkx as nx
@@ -204,7 +205,8 @@ def reindex(backend, host, port, use_ssl, user, password, api_key, yes):
     default="sample_data/",
     help="Directory containing collection.json and feature collection file",
 )
-def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str) -> None:
+@auth_options
+def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str, user: str, password: str, api_key: str, use_ssl: bool) -> None:
     """Load STAC items into the database via STAC API.
 
     This command loads a STAC collection and its items from local JSON files
@@ -217,10 +219,29 @@ def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str) 
         sfeos-tools load-data --stac-url http://localhost:8080 --collection-id my-collection --use-bulk
         sfeos-tools load-data --stac-url http://localhost:8080 --data-dir /path/to/data
     """
-    from httpx import Client
+    # Validate authentication parameters
+    validate_auth(api_key, user, password)
+   
+    from httpx import Client, BasicAuth
+  
+    headers = {"Content-Type": "application/json"}
+
+    verify_ssl = True
+    if use_ssl is not None:
+        verify_ssl = use_ssl
+  
+    client = Client(base_url=stac_url, headers=headers, verify=verify_ssl)
+    # Prepare authentication if provided
+    auth = None
+    if user and password:
+        auth=BasicAuth(user, password)
+        client.auth = auth
+    elif api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        client.headers.update(headers)
 
     try:
-        with Client(base_url=stac_url) as client:
+        with client:
             load_items(client, collection_id, use_bulk, data_dir)
         click.echo(click.style("✓ Data loading completed successfully", fg="green"))
     except KeyboardInterrupt:
@@ -259,23 +280,7 @@ def ingest_catalog(
         sfeos-tools ingest-catalog --xml-file /path/to/concepts.xml --stac-url https://my-stac-api.com
     """
     # Validate authentication parameters
-    if api_key and (user or password):
-        click.echo(
-            click.style(
-                "✗ Authentication error: Please provide EITHER user/password OR an api_key, not both.",
-                fg="red",
-            )
-        )
-        sys.exit(1)
-
-    if (user and not password) or (password and not user):
-        click.echo(
-            click.style(
-                "✗ Authentication error: Both user AND password must be provided together.",
-                fg="red",
-            )
-        )
-        sys.exit(1)
+    validate_auth(api_key, user, password)
 
     try:
         ingest_from_xml(

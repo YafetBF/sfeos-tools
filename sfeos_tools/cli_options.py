@@ -1,6 +1,7 @@
 """Reusable CLI option decorators for consistent connection handling."""
 
 import os
+import sys
 
 import click
 
@@ -38,6 +39,34 @@ def auth_options(f):
         help="API key for authentication (default: ES_API_KEY env var)",
     )(f)
     return f
+
+def validate_auth(api_key, user, password):
+    """Validate authentication parameters.
+    
+    This function checks either api_key or username and password are provided.
+    
+    Args:
+        api_key: API key for authentication
+        user: Username for authentication
+        password: Password for authentication
+    """
+    if api_key and (user or password):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Please provide EITHER user/password OR an api_key, not both.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    if (user and not password) or (password and not user):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Both user AND password must be provided together.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
 
 
 def database_connection_options(f):
