@@ -389,3 +389,204 @@ class TestCLILoadData:
         assert result.exit_code == 1
         assert "✗ Data loading failed" in result.output
         assert "Connection failed" in result.output
+
+    def test_cli_load_data_with_api_key(self, tmp_path):
+        """Test CLI load-data command with API key authentication."""
+        collection_data = {"type": "Collection"}
+        collection_file = tmp_path / "collection.json"
+        collection_file.write_text(json.dumps(collection_data))
+
+        feature_data = {
+            "type": "FeatureCollection",
+            "features": [{"id": "item-1", "type": "Feature"}],
+        }
+        feature_file = tmp_path / "features.json"
+        feature_file.write_text(json.dumps(feature_data))
+
+        runner = CliRunner()
+        with patch("httpx.Client") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value.__enter__.return_value = mock_client
+            mock_response = Mock(spec=Response)
+            mock_response.status_code = 200
+            mock_client.post.return_value = mock_response
+
+            result = runner.invoke(
+                cli,
+                [
+                    "load-data",
+                    "--stac-url",
+                    "https://my-api.com",
+                    "--api-key",
+                    "test-api-key",
+                    "--collection-id",
+                    "test-collection",
+                    "--data-dir",
+                    str(tmp_path),
+                ],
+            )
+
+            # Verify the Client was called with correct auth headers
+            call_kwargs = mock_client_class.call_args[1]
+            assert call_kwargs["headers"]["Authorization"] == "ApiKey test-api-key"
+
+        assert result.exit_code == 0
+        assert "✓ Data loading completed successfully" in result.output
+
+    def test_cli_load_data_with_basic_auth(self, tmp_path):
+        """Test CLI load-data command with basic authentication."""
+        collection_data = {"type": "Collection"}
+        collection_file = tmp_path / "collection.json"
+        collection_file.write_text(json.dumps(collection_data))
+
+        feature_data = {
+            "type": "FeatureCollection",
+            "features": [{"id": "item-1", "type": "Feature"}],
+        }
+        feature_file = tmp_path / "features.json"
+        feature_file.write_text(json.dumps(feature_data))
+
+        runner = CliRunner()
+        with patch("httpx.Client") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value.__enter__.return_value = mock_client
+            mock_response = Mock(spec=Response)
+            mock_response.status_code = 200
+            mock_client.post.return_value = mock_response
+
+            result = runner.invoke(
+                cli,
+                [
+                    "load-data",
+                    "--stac-url",
+                    "https://my-api.com",
+                    "--user",
+                    "admin",
+                    "--password",
+                    "secret",
+                    "--collection-id",
+                    "test-collection",
+                    "--data-dir",
+                    str(tmp_path),
+                ],
+            )
+
+            # Verify the Client was called with correct auth tuple
+            call_kwargs = mock_client_class.call_args[1]
+            assert call_kwargs["auth"] == ("admin", "secret")
+
+        assert result.exit_code == 0
+        assert "✓ Data loading completed successfully" in result.output
+
+    def test_cli_load_data_rejects_both_auth_methods(self, tmp_path):
+        """Test CLI load-data command rejects both API key and basic auth."""
+        collection_data = {"type": "Collection"}
+        collection_file = tmp_path / "collection.json"
+        collection_file.write_text(json.dumps(collection_data))
+
+        feature_data = {
+            "type": "FeatureCollection",
+            "features": [{"id": "item-1", "type": "Feature"}],
+        }
+        feature_file = tmp_path / "features.json"
+        feature_file.write_text(json.dumps(feature_data))
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "load-data",
+                "--stac-url",
+                "https://my-api.com",
+                "--api-key",
+                "test-api-key",
+                "--user",
+                "admin",
+                "--password",
+                "secret",
+                "--collection-id",
+                "test-collection",
+                "--data-dir",
+                str(tmp_path),
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert "Authentication error" in result.output
+        assert "EITHER user/password OR an api_key" in result.output
+
+    def test_cli_load_data_rejects_incomplete_basic_auth(self, tmp_path):
+        """Test CLI load-data command rejects incomplete basic auth."""
+        collection_data = {"type": "Collection"}
+        collection_file = tmp_path / "collection.json"
+        collection_file.write_text(json.dumps(collection_data))
+
+        feature_data = {
+            "type": "FeatureCollection",
+            "features": [{"id": "item-1", "type": "Feature"}],
+        }
+        feature_file = tmp_path / "features.json"
+        feature_file.write_text(json.dumps(feature_data))
+
+        runner = CliRunner()
+        # Test with only username
+        result = runner.invoke(
+            cli,
+            [
+                "load-data",
+                "--stac-url",
+                "https://my-api.com",
+                "--user",
+                "admin",
+                "--collection-id",
+                "test-collection",
+                "--data-dir",
+                str(tmp_path),
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert "Authentication error" in result.output
+        assert "Both user AND password must be provided" in result.output
+
+    def test_cli_load_data_with_ssl_flag(self, tmp_path):
+        """Test CLI load-data command with SSL flag."""
+        collection_data = {"type": "Collection"}
+        collection_file = tmp_path / "collection.json"
+        collection_file.write_text(json.dumps(collection_data))
+
+        feature_data = {
+            "type": "FeatureCollection",
+            "features": [{"id": "item-1", "type": "Feature"}],
+        }
+        feature_file = tmp_path / "features.json"
+        feature_file.write_text(json.dumps(feature_data))
+
+        runner = CliRunner()
+        with patch("httpx.Client") as mock_client_class:
+            mock_client = MagicMock()
+            mock_client_class.return_value.__enter__.return_value = mock_client
+            mock_response = Mock(spec=Response)
+            mock_response.status_code = 200
+            mock_client.post.return_value = mock_response
+
+            result = runner.invoke(
+                cli,
+                [
+                    "load-data",
+                    "--stac-url",
+                    "https://my-api.com",
+                    "--no-ssl",
+                    "--collection-id",
+                    "test-collection",
+                    "--data-dir",
+                    str(tmp_path),
+                ],
+            )
+
+            # Verify the Client was called with verify=False
+            call_kwargs = mock_client_class.call_args[1]
+            assert call_kwargs["verify"] is False
+
+        assert result.exit_code == 0
+        assert "✓ Data loading completed successfully" in result.output

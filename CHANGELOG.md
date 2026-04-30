@@ -6,12 +6,18 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 ## [Unreleased]
 
+## [v0.7.0] - 2026-04-30
+
+### Added
+
+- Added authentication support (`--api-key`, `--user`, `--password`, `--use-ssl/--no-ssl` options) to all STAC API commands (`load-data`, `crawl-graph`, `visualize-graph`). Supports both API key and basic authentication with mutual exclusivity validation. Includes comprehensive test suite with 9 authentication-specific test cases.
+
 ## [v0.6.0] - 2026-04-22
 
 ### Added
 
 - Added `crawl-graph` command to crawl SFEOS Multi-Tenant Catalogs and Collections, building and displaying the DAG with support for poly-hierarchies. Features include STAC-compliant pagination (both `rel="next"` links and limit/offset), mathematically-deduced root catalog detection using NetworkX `in_degree()`, safe poly-hierarchy visualization with `(🔗 Poly-Linked)` indicators, and dual output formats (text tree and JSON graph). Requires optional `networkx` dependency (installable via `pip install sfeos-tools[crawler]`).
-- Added `visualize-graph` command to generate an interactive, physics-simulated web visualization of the SFEOS catalog hierarchy. Features include drag-and-drop node manipulation, automatic browser launch, color-coded nodes (blue for standard catalogs, green for leaf nodes, orange diamonds for poly-hierarchical nodes), and hierarchical tree layout. Requires optional `pyvis` dependency (installable via `pip install sfeos-tools[visualizer]`).
+- Added `visualize-graph` command to generate an interactive, physics-simulated web visualization of the SFEOS catalog hierarchy. Features include drag-and-drop node manipulation, automatic browser launch, color-coded nodes (blue for standard catalogs, green for leaf nodes, orange diamonds for poly-hierarchical nodes), hierarchical tree layout with multiple layout options (hierarchical, hierarchical-lr, force, spring), and strict horizontal level alignment for DAGs. Requires optional `pyvis` dependency (installable via `pip install sfeos-tools[visualizer]`).
 
 ### Updated
 
@@ -76,7 +82,8 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 - Initial release
 
-[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.6.0..main
+[Unreleased]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.7.0..main
+[v0.7.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/healy-hyperspatial/sfeos-tools/compare/v0.3.0...v0.4.0

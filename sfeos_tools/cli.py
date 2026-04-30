@@ -40,11 +40,15 @@ from .bbox_shape import run_add_bbox_shape
 from .catalog_ingestion import ingest_from_xml
 from .cli_options import (
     auth_options,
+    configure_session_auth,
     database_options,
+    prepare_auth_headers_and_verify,
     set_es_env_vars,
     stac_api_options,
+    validate_auth_options,
 )
 from .data_loader import load_items
+from .graph_visualization import enhance_html_with_legend, get_layout_options
 from .reindex import run as unified_reindex_run
 
 logging.basicConfig(level=logging.INFO)
@@ -192,6 +196,7 @@ def reindex(backend, host, port, use_ssl, user, password, api_key, yes):
 
 @cli.command("load-data")
 @stac_api_options
+@auth_options
 @click.option(
     "--collection-id",
     default="test-collection",
@@ -204,7 +209,16 @@ def reindex(backend, host, port, use_ssl, user, password, api_key, yes):
     default="sample_data/",
     help="Directory containing collection.json and feature collection file",
 )
-def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str) -> None:
+def load_data(
+    stac_url: str,
+    use_ssl: bool,
+    user: str,
+    password: str,
+    api_key: str,
+    collection_id: str,
+    use_bulk: bool,
+    data_dir: str,
+) -> None:
     """Load STAC items into the database via STAC API.
 
     This command loads a STAC collection and its items from local JSON files
@@ -212,15 +226,27 @@ def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str) 
     - collection.json: The STAC collection definition
     - One or more feature collection JSON files with STAC items
 
+    Supports both basic authentication (username/password) and API key authentication.
+
     Examples:
         sfeos-tools load-data --stac-url http://localhost:8080
         sfeos-tools load-data --stac-url http://localhost:8080 --collection-id my-collection --use-bulk
         sfeos-tools load-data --stac-url http://localhost:8080 --data-dir /path/to/data
+        sfeos-tools load-data --stac-url https://my-api.com --api-key my-key
+        sfeos-tools load-data --stac-url https://my-api.com --user admin --password secret
     """
     from httpx import Client
 
+    validate_auth_options(user, password, api_key)
+
     try:
-        with Client(base_url=stac_url) as client:
+        headers, auth, verify = prepare_auth_headers_and_verify(
+            user, password, api_key, use_ssl
+        )
+
+        with Client(
+            base_url=stac_url, headers=headers, auth=auth, verify=verify
+        ) as client:
             load_items(client, collection_id, use_bulk, data_dir)
         click.echo(click.style("✓ Data loading completed successfully", fg="green"))
     except KeyboardInterrupt:
@@ -258,24 +284,7 @@ def ingest_catalog(
         sfeos-tools ingest-catalog --xml-file thesaurus.rdf --stac-url http://localhost:8080
         sfeos-tools ingest-catalog --xml-file /path/to/concepts.xml --stac-url https://my-stac-api.com
     """
-    # Validate authentication parameters
-    if api_key and (user or password):
-        click.echo(
-            click.style(
-                "✗ Authentication error: Please provide EITHER user/password OR an api_key, not both.",
-                fg="red",
-            )
-        )
-        sys.exit(1)
-
-    if (user and not password) or (password and not user):
-        click.echo(
-            click.style(
-                "✗ Authentication error: Both user AND password must be provided together.",
-                fg="red",
-            )
-        )
-        sys.exit(1)
+    validate_auth_options(user, password, api_key)
 
     try:
         ingest_from_xml(
@@ -473,7 +482,10 @@ def _fetch_all_paginated(
     default="text",
     help="Format to display the graph.",
 )
-def crawl_graph(url: str, output: str) -> None:
+@auth_options
+def crawl_graph(
+    url: str, output: str, use_ssl: bool, user: str, password: str, api_key: str
+) -> None:
     """Crawl the SFEOS Multi-Tenant Catalogs and Collections to build and display the DAG.
 
     This command traverses the SFEOS API hierarchy, discovering all catalogs and
@@ -481,10 +493,14 @@ def crawl_graph(url: str, output: str) -> None:
     It automatically detects true root catalogs by analyzing graph structure and
     handles STAC-compliant pagination to ensure no entities are missed.
 
+    Supports both basic authentication (username/password) and API key authentication.
+
     Examples:
         sfeos-tools crawl-graph
         sfeos-tools crawl-graph --url http://localhost:8080
         sfeos-tools crawl-graph --url https://my-sfeos-api.com --output json
+        sfeos-tools crawl-graph --url https://my-sfeos-api.com --api-key my-key
+        sfeos-tools crawl-graph --url https://my-sfeos-api.com --user admin --password secret
     """
     if nx is None:
         click.echo(
@@ -495,10 +511,13 @@ def crawl_graph(url: str, output: str) -> None:
         )
         sys.exit(1)
 
+    validate_auth_options(user, password, api_key)
+
     click.echo(click.style(f"🌲 Crawling SFEOS Multi-Tenant API at {url}...", fg="cyan"))
 
     dag = nx.DiGraph()
     session = requests.Session()
+    configure_session_auth(session, user, password, api_key, use_ssl)
 
     catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
     try:
@@ -625,12 +644,17 @@ def _print_tree(
     default="hierarchical",
     help="Graph layout style: hierarchical (top-to-bottom tree), hierarchical-lr (left-to-right tree), force (physics-based), or spring (organic).",
 )
-def visualize_graph(url: str, layout: str) -> None:
+@auth_options
+def visualize_graph(
+    url: str, layout: str, use_ssl: bool, user: str, password: str, api_key: str
+) -> None:
     """Crawl SFEOS API and open an interactive web visualization of the DAG.
 
     This command builds a physics-simulated, drag-and-drop HTML dashboard showing
     the complete catalog hierarchy. Poly-hierarchical nodes are highlighted as
     orange diamonds, and the visualization opens automatically in your browser.
+
+    Supports both basic authentication (username/password) and API key authentication.
 
     Examples:
         sfeos-tools visualize-graph
@@ -638,6 +662,8 @@ def visualize_graph(url: str, layout: str) -> None:
         sfeos-tools visualize-graph --layout hierarchical-lr
         sfeos-tools visualize-graph --layout force
         sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout spring
+        sfeos-tools visualize-graph --url https://my-sfeos-api.com --api-key my-key
+        sfeos-tools visualize-graph --url https://my-sfeos-api.com --user admin --password secret
     """
     if nx is None:
         click.echo(
@@ -657,10 +683,13 @@ def visualize_graph(url: str, layout: str) -> None:
         )
         sys.exit(1)
 
+    validate_auth_options(user, password, api_key)
+
     click.echo(click.style(f"🕸️ Crawling {url} for visualization...", fg="cyan"))
 
     dag = nx.DiGraph()
     session = requests.Session()
+    configure_session_auth(session, user, password, api_key, use_ssl)
 
     catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
     try:
@@ -784,167 +813,7 @@ def visualize_graph(url: str, layout: str) -> None:
     )
     net.from_nx(dag)
 
-    layout_lower = layout.lower()
-
-    if layout_lower == "hierarchical":
-        options_js = """
-    var options = {
-      "physics": {
-        "hierarchicalRepulsion": {
-          "centralGravity": 0.0,
-          "springLength": 200,
-          "springConstant": 0.01,
-          "nodeDistance": 200,
-          "damping": 0.09
-        },
-        "solver": "hierarchicalRepulsion"
-      },
-      "layout": {
-        "hierarchical": {
-          "enabled": true,
-          "direction": "UD",
-          "sortMethod": "directed",
-          "nodeSpacing": 300
-        }
-      },
-      "nodes": {
-        "font": {
-          "size": 16,
-          "face": "monospace",
-          "bold": {
-            "size": 17
-          }
-        }
-      },
-      "edges": {
-        "font": {
-          "size": 13
-        },
-        "smooth": {
-          "type": "linear"
-        }
-      }
-    }
-    """
-    elif layout_lower == "hierarchical-lr":
-        options_js = """
-    var options = {
-      "physics": {
-        "hierarchicalRepulsion": {
-          "centralGravity": 0.0,
-          "springLength": 200,
-          "springConstant": 0.01,
-          "nodeDistance": 200,
-          "damping": 0.09
-        },
-        "solver": "hierarchicalRepulsion"
-      },
-      "layout": {
-        "hierarchical": {
-          "enabled": true,
-          "direction": "LR",
-          "sortMethod": "directed",
-          "nodeSpacing": 300
-        }
-      },
-      "nodes": {
-        "font": {
-          "size": 16,
-          "face": "monospace",
-          "bold": {
-            "size": 17
-          }
-        }
-      },
-      "edges": {
-        "font": {
-          "size": 13
-        },
-        "smooth": {
-          "type": "linear"
-        }
-      }
-    }
-    """
-    elif layout_lower == "force":
-        options_js = """
-    var options = {
-      "physics": {
-        "forceAtlas2Based": {
-          "gravitationalConstant": -50,
-          "centralGravity": 0.01,
-          "springLength": 200,
-          "springConstant": 0.08,
-          "damping": 0.4,
-          "avoidOverlap": 0.5
-        },
-        "solver": "forceAtlas2Based",
-        "timestep": 0.35,
-        "stabilization": {
-          "iterations": 150
-        }
-      },
-      "layout": {
-        "hierarchical": {
-          "enabled": false
-        }
-      },
-      "nodes": {
-        "font": {
-          "size": 16,
-          "face": "monospace",
-          "bold": {
-            "size": 17
-          }
-        }
-      },
-      "edges": {
-        "font": {
-          "size": 13
-        }
-      }
-    }
-    """
-    else:  # spring
-        options_js = """
-    var options = {
-      "physics": {
-        "barnesHut": {
-          "gravitationalConstant": -30000,
-          "centralGravity": 0.3,
-          "springLength": 200,
-          "springConstant": 0.04,
-          "damping": 0.3,
-          "avoidOverlap": 0.5
-        },
-        "solver": "barnesHut",
-        "timestep": 0.5,
-        "stabilization": {
-          "iterations": 200
-        }
-      },
-      "layout": {
-        "hierarchical": {
-          "enabled": false
-        }
-      },
-      "nodes": {
-        "font": {
-          "size": 16,
-          "face": "monospace",
-          "bold": {
-            "size": 17
-          }
-        }
-      },
-      "edges": {
-        "font": {
-          "size": 13
-        }
-      }
-    }
-    """
-
+    options_js = get_layout_options(layout)
     net.set_options(options_js)
 
     output_file = "sfeos_topology.html"
@@ -953,97 +822,7 @@ def visualize_graph(url: str, layout: str) -> None:
     with open(output_file, "r", encoding="utf-8") as f:
         html_content = f.read()
 
-    legend_html = """
-    <div style="position: fixed; top: 20px; right: 20px; background-color: rgba(18, 18, 18, 0.95);
-                border: 2px solid #666; border-radius: 8px; padding: 15px; z-index: 1000;
-                font-family: monospace; color: white; max-width: 250px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-        <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 8px;">
-            SFEOS Topology Legend
-        </div>
-        <div style="font-size: 12px; line-height: 1.8;">
-            <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff0040;
-                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
-                <span>Virtual Root API</span>
-            </div>
-            <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #2196F3;
-                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
-                <span>Standard Catalog</span>
-            </div>
-            <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #4CAF50;
-                            border-radius: 50%; margin-right: 8px; vertical-align: middle;"></span>
-                <span>Leaf Catalog</span>
-            </div>
-            <div style="margin-bottom: 8px;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #9C27B0;
-                            margin-right: 8px; vertical-align: middle;"></span>
-                <span>Collection</span>
-            </div>
-            <div style="margin-bottom: 0;">
-                <span style="display: inline-block; width: 16px; height: 16px; background-color: #ff9800;
-                            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
-                            margin-right: 8px; vertical-align: middle;"></span>
-                <span>Poly-Linked Node</span>
-            </div>
-        </div>
-    </div>
-    """
-
-    level_separators_js = """
-    <script type="text/javascript">
-        // Draw level separators for hierarchical layout
-        if (network.options.layout.hierarchical && network.options.layout.hierarchical.enabled) {
-            network.on("stabilizationIterationsDone", function() {
-                drawLevelSeparators();
-            });
-
-            function drawLevelSeparators() {
-                var canvas = network.canvas.canvas;
-                var ctx = canvas.getContext('2d');
-                var nodes = network.body.nodes;
-
-                // Group nodes by their y-position (level)
-                var levels = {};
-                for (var nodeId in nodes) {
-                    var node = nodes[nodeId];
-                    var y = Math.round(node.y / 10) * 10; // Group by approximate y
-                    if (!levels[y]) levels[y] = [];
-                    levels[y].push(node);
-                }
-
-                // Draw separators
-                var sortedLevels = Object.keys(levels).sort((a, b) => a - b);
-                for (var i = 0; i < sortedLevels.length - 1; i++) {
-                    var currentY = parseFloat(sortedLevels[i]);
-                    var nextY = parseFloat(sortedLevels[i + 1]);
-                    var midY = (currentY + nextY) / 2;
-
-                    // Convert world coordinates to canvas coordinates
-                    var canvasY = network.canvas.canvasToDOM({x: 0, y: midY}).y;
-
-                    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([5, 5]);
-                    ctx.beginPath();
-                    ctx.moveTo(0, canvasY);
-                    ctx.lineTo(canvas.width, canvasY);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-            }
-
-            // Redraw on pan/zoom
-            network.on("zoom", drawLevelSeparators);
-            network.on("pan", drawLevelSeparators);
-        }
-    </script>
-    """
-
-    html_content = html_content.replace(
-        "</body>", level_separators_js + legend_html + "\n</body>"
-    )
+    html_content = enhance_html_with_legend(html_content, layout)
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(html_content)
