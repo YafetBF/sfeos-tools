@@ -12,10 +12,6 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 - Added authentication support (`--api-key`, `--user`, `--password`, `--use-ssl/--no-ssl` options) to all STAC API commands (`load-data`, `crawl-graph`, `visualize-graph`). Supports both API key and basic authentication with mutual exclusivity validation. Includes comprehensive test suite with 9 authentication-specific test cases.
 
-### Updated
-
-- Enhanced `visualize-graph` command with strict horizontal level alignment using NetworkX shortest path calculations, ensuring perfect alignment of nodes at each hierarchy level without wavy or staggered appearance in DAGs with multiple parents.
-
 ## [v0.6.0] - 2026-04-22
 
 ### Added
