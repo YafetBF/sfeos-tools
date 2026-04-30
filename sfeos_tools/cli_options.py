@@ -2,6 +2,7 @@
 
 import os
 import sys
+from typing import Optional, Tuple
 
 import click
 
@@ -161,7 +162,7 @@ def validate_auth_options(user: str, password: str, api_key: str) -> None:
 
 def prepare_auth_headers_and_verify(
     user: str, password: str, api_key: str, use_ssl: bool
-) -> tuple[dict, tuple | None, bool]:
+) -> Tuple[dict, Optional[Tuple[str, str]], bool]:
     """Prepare authentication headers, auth tuple, and SSL verification settings.
 
     Args:
