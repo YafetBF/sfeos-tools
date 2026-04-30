@@ -6,6 +6,10 @@ The format is (loosely) based on [Keep a Changelog](http://keepachangelog.com/) 
 
 ## [Unreleased]
 
+### Added
+
+- Added user and password, API key, SSL authentication support (`--user`, `--password`, `--api-key`, `--use-ssl/--no-ssl` options) for STAC API commands (`load-data`).
+
 ## [v0.6.0] - 2026-04-22
 
 ### Added
