@@ -192,6 +192,7 @@ def reindex(backend, host, port, use_ssl, user, password, api_key, yes):
 
 @cli.command("load-data")
 @stac_api_options
+@auth_options
 @click.option(
     "--collection-id",
     default="test-collection",
@@ -204,7 +205,16 @@ def reindex(backend, host, port, use_ssl, user, password, api_key, yes):
     default="sample_data/",
     help="Directory containing collection.json and feature collection file",
 )
-def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str) -> None:
+def load_data(
+    stac_url: str,
+    use_ssl: bool,
+    user: str,
+    password: str,
+    api_key: str,
+    collection_id: str,
+    use_bulk: bool,
+    data_dir: str,
+) -> None:
     """Load STAC items into the database via STAC API.
 
     This command loads a STAC collection and its items from local JSON files
@@ -212,15 +222,54 @@ def load_data(stac_url: str, collection_id: str, use_bulk: bool, data_dir: str) 
     - collection.json: The STAC collection definition
     - One or more feature collection JSON files with STAC items
 
+    Supports both basic authentication (username/password) and API key authentication.
+
     Examples:
         sfeos-tools load-data --stac-url http://localhost:8080
         sfeos-tools load-data --stac-url http://localhost:8080 --collection-id my-collection --use-bulk
         sfeos-tools load-data --stac-url http://localhost:8080 --data-dir /path/to/data
+        sfeos-tools load-data --stac-url https://my-api.com --api-key my-key
+        sfeos-tools load-data --stac-url https://my-api.com --user admin --password secret
     """
     from httpx import Client
 
+    # Validate authentication parameters
+    if api_key and (user or password):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Please provide EITHER user/password OR an api_key, not both.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    if (user and not password) or (password and not user):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Both user AND password must be provided together.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
     try:
-        with Client(base_url=stac_url) as client:
+        # Prepare authentication headers
+        headers = {}
+        auth = None
+
+        if api_key:
+            headers["Authorization"] = f"ApiKey {api_key}"
+        elif user and password:
+            auth = (user, password)
+
+        # Prepare SSL verification settings
+        verify = True
+        if use_ssl is False:
+            verify = False
+
+        with Client(
+            base_url=stac_url, headers=headers, auth=auth, verify=verify
+        ) as client:
             load_items(client, collection_id, use_bulk, data_dir)
         click.echo(click.style("✓ Data loading completed successfully", fg="green"))
     except KeyboardInterrupt:
@@ -473,7 +522,10 @@ def _fetch_all_paginated(
     default="text",
     help="Format to display the graph.",
 )
-def crawl_graph(url: str, output: str) -> None:
+@auth_options
+def crawl_graph(
+    url: str, output: str, use_ssl: bool, user: str, password: str, api_key: str
+) -> None:
     """Crawl the SFEOS Multi-Tenant Catalogs and Collections to build and display the DAG.
 
     This command traverses the SFEOS API hierarchy, discovering all catalogs and
@@ -481,10 +533,14 @@ def crawl_graph(url: str, output: str) -> None:
     It automatically detects true root catalogs by analyzing graph structure and
     handles STAC-compliant pagination to ensure no entities are missed.
 
+    Supports both basic authentication (username/password) and API key authentication.
+
     Examples:
         sfeos-tools crawl-graph
         sfeos-tools crawl-graph --url http://localhost:8080
         sfeos-tools crawl-graph --url https://my-sfeos-api.com --output json
+        sfeos-tools crawl-graph --url https://my-sfeos-api.com --api-key my-key
+        sfeos-tools crawl-graph --url https://my-sfeos-api.com --user admin --password secret
     """
     if nx is None:
         click.echo(
@@ -499,6 +555,16 @@ def crawl_graph(url: str, output: str) -> None:
 
     dag = nx.DiGraph()
     session = requests.Session()
+
+    # Configure authentication
+    if api_key:
+        session.headers.update({"Authorization": f"ApiKey {api_key}"})
+    elif user and password:
+        session.auth = (user, password)
+
+    # Configure SSL verification
+    if use_ssl is False:
+        session.verify = False
 
     catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
     try:
@@ -625,12 +691,17 @@ def _print_tree(
     default="hierarchical",
     help="Graph layout style: hierarchical (top-to-bottom tree), hierarchical-lr (left-to-right tree), force (physics-based), or spring (organic).",
 )
-def visualize_graph(url: str, layout: str) -> None:
+@auth_options
+def visualize_graph(
+    url: str, layout: str, use_ssl: bool, user: str, password: str, api_key: str
+) -> None:
     """Crawl SFEOS API and open an interactive web visualization of the DAG.
 
     This command builds a physics-simulated, drag-and-drop HTML dashboard showing
     the complete catalog hierarchy. Poly-hierarchical nodes are highlighted as
     orange diamonds, and the visualization opens automatically in your browser.
+
+    Supports both basic authentication (username/password) and API key authentication.
 
     Examples:
         sfeos-tools visualize-graph
@@ -638,6 +709,8 @@ def visualize_graph(url: str, layout: str) -> None:
         sfeos-tools visualize-graph --layout hierarchical-lr
         sfeos-tools visualize-graph --layout force
         sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout spring
+        sfeos-tools visualize-graph --url https://my-sfeos-api.com --api-key my-key
+        sfeos-tools visualize-graph --url https://my-sfeos-api.com --user admin --password secret
     """
     if nx is None:
         click.echo(
@@ -661,6 +734,16 @@ def visualize_graph(url: str, layout: str) -> None:
 
     dag = nx.DiGraph()
     session = requests.Session()
+
+    # Configure authentication
+    if api_key:
+        session.headers.update({"Authorization": f"ApiKey {api_key}"})
+    elif user and password:
+        session.auth = (user, password)
+
+    # Configure SSL verification
+    if use_ssl is False:
+        session.verify = False
 
     catalogs_endpoint = urljoin(url, "/catalogs?limit=100")
     try:

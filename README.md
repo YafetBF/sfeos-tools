@@ -256,12 +256,20 @@ Options:
 - `--collection-id`: ID of the collection to create/update (default: test-collection)
 - `--data-dir`: Directory containing collection.json and feature collection files (default: sample_data/)
 - `--use-bulk`: Use bulk insert method for items (faster for large datasets)
+- `--use-ssl/--no-ssl`: SSL connection flag (default: true)
+- `--user`: Username for basic authentication (default: ES_USER env var)
+- `--password`: Password for basic authentication (default: ES_PASS env var)
+- `--api-key`: API key for authentication (default: ES_API_KEY env var)
 
 **Data Directory Structure:**
 
 Your data directory should contain:
 - `collection.json`: STAC collection definition
 - One or more `.json` files: Feature collections with STAC items
+
+**Authentication:**
+
+The command supports both basic authentication (username/password) and API key authentication. Provide EITHER username/password OR an API key, not both.
 
 Examples:
 ```bash
@@ -278,6 +286,19 @@ sfeos-tools load-data \
 sfeos-tools load-data \
   --stac-url http://localhost:8080 \
   --data-dir /path/to/stac/data \
+  --collection-id production-data
+
+# Load with API key authentication
+sfeos-tools load-data \
+  --stac-url https://my-api.com \
+  --api-key your-api-key \
+  --collection-id production-data
+
+# Load with basic authentication
+sfeos-tools load-data \
+  --stac-url https://my-api.com \
+  --user admin \
+  --password secret \
   --collection-id production-data
 ```
 
@@ -343,6 +364,14 @@ sfeos-tools crawl-graph [options]
 Options:
 - `--url`: Base URL of the SFEOS API (default: http://localhost:8080)
 - `--output`: Output format: `text` for hierarchical tree view or `json` for graph data (default: text)
+- `--use-ssl/--no-ssl`: SSL connection flag (default: true)
+- `--user`: Username for basic authentication (default: ES_USER env var)
+- `--password`: Password for basic authentication (default: ES_PASS env var)
+- `--api-key`: API key for authentication (default: ES_API_KEY env var)
+
+**Authentication:**
+
+The command supports both basic authentication (username/password) and API key authentication. Provide EITHER username/password OR an API key, not both.
 
 **Requirements:**
 
@@ -364,6 +393,12 @@ sfeos-tools crawl-graph --url http://localhost:8080 --output json
 
 # Crawl custom instance and output as JSON
 sfeos-tools crawl-graph --url https://my-sfeos-api.com --output json
+
+# Crawl with API key authentication
+sfeos-tools crawl-graph --url https://my-sfeos-api.com --api-key my-key --output json
+
+# Crawl with basic authentication
+sfeos-tools crawl-graph --url https://my-sfeos-api.com --user admin --password secret
 ```
 
 **Example Output (Text Format):**
@@ -411,6 +446,14 @@ Options:
   - `hierarchical-lr`: Tree layout flowing left-to-right (alternative hierarchical view)
   - `force`: Force-directed layout using ForceAtlas2 algorithm (organic, physics-based)
   - `spring`: Spring-based layout using Barnes-Hut algorithm (natural node spreading)
+- `--use-ssl/--no-ssl`: SSL connection flag (default: true)
+- `--user`: Username for basic authentication (default: ES_USER env var)
+- `--password`: Password for basic authentication (default: ES_PASS env var)
+- `--api-key`: API key for authentication (default: ES_API_KEY env var)
+
+**Authentication:**
+
+The command supports both basic authentication (username/password) and API key authentication. Provide EITHER username/password OR an API key, not both.
 
 **Requirements:**
 
@@ -438,6 +481,12 @@ sfeos-tools visualize-graph --url https://my-sfeos-api.com
 
 # Visualize custom instance with left-to-right layout
 sfeos-tools visualize-graph --url https://my-sfeos-api.com --layout hierarchical-lr
+
+# Visualize with API key authentication
+sfeos-tools visualize-graph --url https://my-sfeos-api.com --api-key my-key
+
+# Visualize with basic authentication
+sfeos-tools visualize-graph --url https://my-sfeos-api.com --user admin --password secret
 ```
 
 **Output:**
