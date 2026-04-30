@@ -15,28 +15,38 @@ def auth_options(f):
     - --user: Username
     - --password: Password
     - --api-key: API key for authentication
+
+    Environment variables:
+    - ES_USE_SSL: Default for --use-ssl/--no-ssl
+    - ES_USER: Default for --user
+    - ES_PASS: Default for --password
+    - ES_API_KEY: Default for --api-key
     """
     f = click.option(
         "--use-ssl/--no-ssl",
         default=None,
-        help="Use SSL connection (default: true or ES_USE_SSL env var)",
+        envvar="ES_USE_SSL",
+        help="Use SSL connection (default: ES_USE_SSL env var)",
     )(f)
     f = click.option(
         "--user",
         type=str,
         default=None,
+        envvar="ES_USER",
         help="Username (default: ES_USER env var)",
     )(f)
     f = click.option(
         "--password",
         type=str,
         default=None,
+        envvar="ES_PASS",
         help="Password (default: ES_PASS env var)",
     )(f)
     f = click.option(
         "--api-key",
         type=str,
         default=None,
+        envvar="ES_API_KEY",
         help="API key for authentication (default: ES_API_KEY env var)",
     )(f)
     return f
@@ -126,7 +136,9 @@ def set_es_env_vars(
         os.environ["ES_API_KEY"] = api_key
 
 
-def validate_auth_options(user: str, password: str, api_key: str) -> None:
+def validate_auth_options(
+    user: Optional[str], password: Optional[str], api_key: Optional[str]
+) -> None:
     """Validate authentication parameters for mutual exclusivity and completeness.
 
     Ensures that:
@@ -134,9 +146,9 @@ def validate_auth_options(user: str, password: str, api_key: str) -> None:
     - If username is provided, password must also be provided (and vice versa)
 
     Args:
-        user: Username for basic authentication
-        password: Password for basic authentication
-        api_key: API key for authentication
+        user: Username for basic authentication (or None)
+        password: Password for basic authentication (or None)
+        api_key: API key for authentication (or None)
 
     Raises:
         SystemExit: If validation fails, prints error and exits with code 1
@@ -161,14 +173,17 @@ def validate_auth_options(user: str, password: str, api_key: str) -> None:
 
 
 def prepare_auth_headers_and_verify(
-    user: str, password: str, api_key: str, use_ssl: bool
+    user: Optional[str],
+    password: Optional[str],
+    api_key: Optional[str],
+    use_ssl: Optional[bool],
 ) -> Tuple[dict, Optional[Tuple[str, str]], bool]:
     """Prepare authentication headers, auth tuple, and SSL verification settings.
 
     Args:
-        user: Username for basic authentication
-        password: Password for basic authentication
-        api_key: API key for authentication
+        user: Username for basic authentication (or None)
+        password: Password for basic authentication (or None)
+        api_key: API key for authentication (or None)
         use_ssl: SSL verification flag (True/False/None)
 
     Returns:
@@ -190,15 +205,19 @@ def prepare_auth_headers_and_verify(
 
 
 def configure_session_auth(
-    session, user: str, password: str, api_key: str, use_ssl: bool
+    session,
+    user: Optional[str],
+    password: Optional[str],
+    api_key: Optional[str],
+    use_ssl: Optional[bool],
 ) -> None:
     """Configure a requests.Session with authentication and SSL settings.
 
     Args:
         session: requests.Session object to configure
-        user: Username for basic authentication
-        password: Password for basic authentication
-        api_key: API key for authentication
+        user: Username for basic authentication (or None)
+        password: Password for basic authentication (or None)
+        api_key: API key for authentication (or None)
         use_ssl: SSL verification flag (True/False/None)
     """
     if api_key:

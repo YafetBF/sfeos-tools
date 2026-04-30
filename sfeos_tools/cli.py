@@ -511,6 +511,8 @@ def crawl_graph(
         )
         sys.exit(1)
 
+    validate_auth_options(user, password, api_key)
+
     click.echo(click.style(f"🌲 Crawling SFEOS Multi-Tenant API at {url}...", fg="cyan"))
 
     dag = nx.DiGraph()
@@ -680,6 +682,8 @@ def visualize_graph(
             )
         )
         sys.exit(1)
+
+    validate_auth_options(user, password, api_key)
 
     click.echo(click.style(f"🕸️ Crawling {url} for visualization...", fg="cyan"))
 
