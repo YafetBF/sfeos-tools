@@ -1,6 +1,7 @@
 """Reusable CLI option decorators for consistent connection handling."""
 
 import os
+import sys
 
 import click
 
@@ -122,3 +123,87 @@ def set_es_env_vars(
         os.environ["ES_PASS"] = password
     if api_key:
         os.environ["ES_API_KEY"] = api_key
+
+
+def validate_auth_options(user: str, password: str, api_key: str) -> None:
+    """Validate authentication parameters for mutual exclusivity and completeness.
+
+    Ensures that:
+    - Either API key OR username/password is provided, not both
+    - If username is provided, password must also be provided (and vice versa)
+
+    Args:
+        user: Username for basic authentication
+        password: Password for basic authentication
+        api_key: API key for authentication
+
+    Raises:
+        SystemExit: If validation fails, prints error and exits with code 1
+    """
+    if api_key and (user or password):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Please provide EITHER user/password OR an api_key, not both.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+    if (user and not password) or (password and not user):
+        click.echo(
+            click.style(
+                "✗ Authentication error: Both user AND password must be provided together.",
+                fg="red",
+            )
+        )
+        sys.exit(1)
+
+
+def prepare_auth_headers_and_verify(
+    user: str, password: str, api_key: str, use_ssl: bool
+) -> tuple[dict, tuple | None, bool]:
+    """Prepare authentication headers, auth tuple, and SSL verification settings.
+
+    Args:
+        user: Username for basic authentication
+        password: Password for basic authentication
+        api_key: API key for authentication
+        use_ssl: SSL verification flag (True/False/None)
+
+    Returns:
+        Tuple of (headers dict, auth tuple or None, verify bool)
+    """
+    headers = {}
+    auth = None
+
+    if api_key:
+        headers["Authorization"] = f"ApiKey {api_key}"
+    elif user and password:
+        auth = (user, password)
+
+    verify = True
+    if use_ssl is False:
+        verify = False
+
+    return headers, auth, verify
+
+
+def configure_session_auth(
+    session, user: str, password: str, api_key: str, use_ssl: bool
+) -> None:
+    """Configure a requests.Session with authentication and SSL settings.
+
+    Args:
+        session: requests.Session object to configure
+        user: Username for basic authentication
+        password: Password for basic authentication
+        api_key: API key for authentication
+        use_ssl: SSL verification flag (True/False/None)
+    """
+    if api_key:
+        session.headers.update({"Authorization": f"ApiKey {api_key}"})
+    elif user and password:
+        session.auth = (user, password)
+
+    if use_ssl is False:
+        session.verify = False
