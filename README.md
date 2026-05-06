@@ -1,21 +1,19 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-
 <p align="left">
   <img src="https://github.com/Healy-Hyperspatial/sfeos-web/blob/main/sfeos-web/public/assets/sfeos-logo.png">
 </p>
 
 CLI tools for managing [stac-fastapi-elasticsearch-opensearch](https://github.com/stac-utils/stac-fastapi-elasticsearch-opensearch) deployments.
 
-
 <!-- **Jump to:** [Project Introduction](#project-introduction---what-is-sfeos) | [Quick Start](#quick-start) | [Table of Contents](#table-of-contents) -->
 
-  [![Downloads](https://static.pepy.tech/badge/sfeos-tools?color=blue)](https://pepy.tech/project/sfeos-tools)
-  [![GitHub contributors](https://img.shields.io/github/contributors/healy-hyperspatial/sfeos-tools?color=blue)](https://github.com/healy-hyperspatial/sfeos-tools/graphs/contributors)
-  [![GitHub stars](https://img.shields.io/github/stars/healy-hyperspatial/sfeos-tools.svg?color=blue)](https://github.com/healy-hyperspatial/sfeos-tools/stargazers)
-  [![GitHub forks](https://img.shields.io/github/forks/healy-hyperspatial/sfeos-tools.svg?color=blue)](https://github.com/healy-hyperspatial/sfeos-tools/network/members)
-   [![PyPI version](https://img.shields.io/pypi/v/sfeos-tools.svg?color=blue)](https://pypi.org/project/sfeos-tools/)
-  [![STAC](https://img.shields.io/badge/STAC-1.1.0-blue.svg)](https://github.com/radiantearth/stac-spec/tree/v1.1.0)
+[![Downloads](https://static.pepy.tech/badge/sfeos-tools?color=blue)](https://pepy.tech/project/sfeos-tools)
+[![GitHub contributors](https://img.shields.io/github/contributors/healy-hyperspatial/sfeos-tools?color=blue)](https://github.com/healy-hyperspatial/sfeos-tools/graphs/contributors)
+[![GitHub stars](https://img.shields.io/github/stars/healy-hyperspatial/sfeos-tools.svg?color=blue)](https://github.com/healy-hyperspatial/sfeos-tools/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/healy-hyperspatial/sfeos-tools.svg?color=blue)](https://github.com/healy-hyperspatial/sfeos-tools/network/members)
+[![PyPI version](https://img.shields.io/pypi/v/sfeos-tools.svg?color=blue)](https://pypi.org/project/sfeos-tools/)
+[![STAC](https://img.shields.io/badge/STAC-1.1.0-blue.svg)](https://github.com/radiantearth/stac-spec/tree/v1.1.0)
 
 ## Table of Contents
 
@@ -46,6 +44,7 @@ pip install sfeos-tools[elasticsearch]
 ```
 
 Or for local development:
+
 ```bash
 pip install -e sfeos_tools[elasticsearch]
 ```
@@ -57,6 +56,7 @@ pip install sfeos-tools[opensearch]
 ```
 
 Or for local development:
+
 ```bash
 pip install -e sfeos_tools[opensearch]
 ```
@@ -70,6 +70,7 @@ pip install sfeos-tools[crawler]
 ```
 
 Or for local development:
+
 ```bash
 pip install -e sfeos_tools[crawler]
 ```
@@ -83,6 +84,7 @@ pip install sfeos-tools[visualizer]
 ```
 
 Or for local development:
+
 ```bash
 pip install -e sfeos_tools[visualizer]
 ```
@@ -96,6 +98,7 @@ pip install sfeos-tools[viewer]
 ```
 
 Or for local development:
+
 ```bash
 pip install -e sfeos_tools[viewer]
 ```
@@ -109,6 +112,7 @@ pip install sfeos-tools[all]
 ```
 
 Or for local development:
+
 ```bash
 pip install -e sfeos_tools[all]
 ```
@@ -120,6 +124,7 @@ pip install sfeos-tools[dev]
 ```
 
 Or for local development:
+
 ```bash
 pip install -e sfeos_tools[dev]
 ```
@@ -143,6 +148,7 @@ Want to see the Multi-Tenant Catalogs extension and the `ingest-catalog` command
 📓 **[SKOS-catalogs-ingestion-demo.ipynb](./demo-notebooks/SKOS-catalogs-ingestion-demo.ipynb)**
 
 This notebook walks through a real-world GIS use case (a Traffic Signs taxonomy) and demonstrates:
+
 - **Automated Semantic Ingestion:** Translating a SKOS RDF file directly into a STAC catalog hierarchy.
 - **Poly-hierarchy (DAG):** Discovering a single spatial asset across multiple departmental catalogs (e.g., Regulatory vs. Warning signs).
 - **Contextual Breadcrumbs:** How SFEOS dynamically rewrites `rel="parent"` and `rel="child"` links based on your navigation path.
@@ -155,6 +161,7 @@ This notebook walks through a real-world GIS use case (a Traffic Signs taxonomy)
 The CLI tools use standardized options across commands for consistency:
 
 **Database Commands** (`add-bbox-shape`, `reindex`):
+
 - `--host`: Database host (default: localhost or ES_HOST env var)
 - `--port`: Database port (default: 9200 for ES, 9202 for OS, or ES_PORT env var)
 - `--use-ssl/--no-ssl`: SSL connection flag (default: true or ES_USE_SSL env var)
@@ -163,9 +170,11 @@ The CLI tools use standardized options across commands for consistency:
 - `--api-key`: API key for authentication (default: ES_API_KEY env var)
 
 **STAC API Commands** (`load-data`, `ingest-catalog`, `viewer`):
+
 - `--stac-url`: STAC API base URL (default: http://localhost:8080)
 
 **Authentication Options** (optional for STAC API commands):
+
 - `--user`: Username for basic authentication
 - `--password`: Password for basic authentication
 - `--api-key`: API key for authentication
@@ -180,6 +189,7 @@ sfeos-tools add-bbox-shape --backend [elasticsearch|opensearch] [options]
 ```
 
 Options:
+
 - `--backend`: Database backend to use (required, choices: elasticsearch, opensearch)
 - `--host`: Database host (default: localhost or ES_HOST env var)
 - `--port`: Database port (default: 9200 for ES, 9202 for OS, or ES_PORT env var)
@@ -189,6 +199,7 @@ Options:
 - `--api-key`: API key for authentication (default: ES_API_KEY env var)
 
 Examples:
+
 ```bash
 # Add bbox_shape with default settings
 sfeos-tools add-bbox-shape --backend elasticsearch
@@ -206,6 +217,7 @@ sfeos-tools add-bbox-shape --backend opensearch --host prod.example.com --api-ke
 ### reindex
 
 Reindexes all STAC indexes to the next version and updates aliases. This command performs the following actions:
+
 - Creates/updates index templates
 - Reindexes collections and item indexes to a new version
 - Applies asset migration script for compatibility
@@ -216,6 +228,7 @@ sfeos-tools reindex --backend [elasticsearch|opensearch] [options]
 ```
 
 Options:
+
 - `--backend`: Database backend to use (required, choices: elasticsearch, opensearch)
 - `--host`: Database host (default: localhost or ES_HOST env var)
 - `--port`: Database port (default: 9200 for ES, 9202 for OS, or ES_PORT env var)
@@ -226,6 +239,7 @@ Options:
 - `--yes`: Skip confirmation prompt
 
 Examples:
+
 ```bash
 # Reindex Elasticsearch with custom host and no SSL
 sfeos-tools reindex --backend elasticsearch --host localhost --port 9200 --no-ssl --yes
@@ -243,6 +257,7 @@ sfeos-tools reindex --backend opensearch --host prod.example.com --api-key your-
 ### load-data
 
 Load STAC collections and items from local JSON files into a STAC API instance. This command is useful for:
+
 - Populating a new STAC API deployment with test data
 - Migrating data between STAC API instances
 - Bulk loading STAC collections and items
@@ -252,6 +267,7 @@ sfeos-tools load-data --stac-url <stac-api-url> [options]
 ```
 
 Options:
+
 - `--stac-url`: STAC API base URL (default: http://localhost:8080)
 - `--collection-id`: ID of the collection to create/update (default: test-collection)
 - `--data-dir`: Directory containing collection.json and feature collection files (default: sample_data/)
@@ -264,6 +280,7 @@ Options:
 **Data Directory Structure:**
 
 Your data directory should contain:
+
 - `collection.json`: STAC collection definition
 - One or more `.json` files: Feature collections with STAC items
 
@@ -272,6 +289,7 @@ Your data directory should contain:
 The command supports both basic authentication (username/password) and API key authentication. Provide EITHER username/password OR an API key, not both.
 
 Examples:
+
 ```bash
 # Load data from default directory
 sfeos-tools load-data --stac-url http://localhost:8080
@@ -304,9 +322,10 @@ sfeos-tools load-data \
 
 ### ingest-catalog
 
-**Note:** to enable this functionality, the `ENABLE_CATALOGS_ROUTE` env var needs to be set in SFEOS. 
+**Note:** to enable this functionality, the `ENABLE_CATALOGS_ROUTE` env var needs to be set in SFEOS.
 
 Ingest SKOS/RDF-XML files to create STAC catalogs and sub-catalogs. This command parses RDF/XML files containing SKOS concepts and creates a hierarchical catalog structure in the STAC API. It handles:
+
 - Creating catalogs from SKOS concepts
 - Establishing parent-child relationships (skos:narrower)
 - Preserving semantic links (skos:related, skos:exactMatch, etc.)
@@ -317,17 +336,23 @@ sfeos-tools ingest-catalog --xml-file <path-to-rdf-xml> [options]
 ```
 
 Options:
+
 - `--xml-file`: Path to RDF/XML file containing SKOS concepts (required)
 - `--stac-url`: STAC API base URL (default: http://localhost:8080)
 - `--user`: Username for basic authentication (optional)
 - `--password`: Password for basic authentication (optional)
 - `--api-key`: API key for authentication (optional)
 - `--use-ssl/--no-ssl`: Enable or disable SSL verification (optional)
+- `--lang`: Filter RDF/XML file using language (optional)
 
 Examples:
+
 ```bash
 # Ingest test data from the tests directory (uses default localhost:8080)
 sfeos-tools ingest-catalog --xml-file tests/skos-test-topics.rdf
+
+# Ingest test data filtering using language (uses default localhost:8080)
+sfeos-tools ingest-catalog --xml-file tests/skos-test-topics.rdf --lang en
 
 # Ingest with explicit STAC API URL
 sfeos-tools ingest-catalog --xml-file demo-notebooks/traffic-signs.rdf --stac-url http://localhost:8080
@@ -350,6 +375,7 @@ sfeos-tools ingest-catalog --xml-file /path/to/concepts.xml --stac-url https://m
 Crawl the SFEOS Multi-Tenant Catalogs and Collections to build and display the Directed Acyclic Graph (DAG) of your SFEOS instance. This command traverses the entire catalog hierarchy using breadth-first search, discovering all catalogs and collections regardless of whether the backend has a dedicated graph endpoint installed.
 
 **Key Features:**
+
 - Discovers all catalogs and collections in your SFEOS instance
 - Works with any SFEOS deployment (no special endpoints required)
 - Prevents infinite loops in poly-hierarchy DAGs using a visited set
@@ -362,6 +388,7 @@ sfeos-tools crawl-graph [options]
 ```
 
 Options:
+
 - `--url`: Base URL of the SFEOS API (default: http://localhost:8080)
 - `--output`: Output format: `text` for hierarchical tree view or `json` for graph data (default: text)
 - `--use-ssl/--no-ssl`: SSL connection flag (default: true)
@@ -376,11 +403,13 @@ The command supports both basic authentication (username/password) and API key a
 **Requirements:**
 
 The crawler requires networkx. Install with:
+
 ```bash
 pip install sfeos-tools[crawler]
 ```
 
 Examples:
+
 ```bash
 # Crawl default localhost instance with text output
 sfeos-tools crawl-graph
@@ -402,6 +431,7 @@ sfeos-tools crawl-graph --url https://my-sfeos-api.com --user admin --password s
 ```
 
 **Example Output (Text Format):**
+
 ```
 🌲 Crawling SFEOS Multi-Tenant API at http://localhost:8080...
 Traversing Hierarchy  [####################################]  100%
@@ -422,6 +452,7 @@ The JSON output provides a complete graph representation suitable for analysis, 
 Generate an interactive, physics-simulated web visualization of your SFEOS catalog hierarchy. This command crawls the API and renders a beautiful, drag-and-drop HTML dashboard showing the complete DAG with color-coded nodes and automatic browser launch.
 
 **Key Features:**
+
 - Physics-simulated hierarchical tree layout with spring forces
 - Color-coded nodes for quick visual understanding:
   - 🔵 Blue: Standard catalogs
@@ -440,6 +471,7 @@ sfeos-tools visualize-graph [options]
 ```
 
 Options:
+
 - `--url`: Base URL of the SFEOS API (default: http://localhost:8080)
 - `--layout`: Graph layout style (default: hierarchical)
   - `hierarchical`: Tree layout flowing top-to-bottom (best for DAGs)
@@ -458,11 +490,13 @@ The command supports both basic authentication (username/password) and API key a
 **Requirements:**
 
 The visualizer requires networkx and pyvis. Install with:
+
 ```bash
 pip install sfeos-tools[visualizer]
 ```
 
 Examples:
+
 ```bash
 # Visualize default localhost instance (hierarchical layout)
 sfeos-tools visualize-graph
@@ -492,6 +526,7 @@ sfeos-tools visualize-graph --url https://my-sfeos-api.com --user admin --passwo
 **Output:**
 
 The command generates an `sfeos_topology.html` file and automatically opens it in your default browser. The visualization features:
+
 - Hierarchical tree layout flowing top-to-bottom
 - Nodes that can be dragged to explore relationships
 - Spring physics that naturally separates nodes
@@ -501,6 +536,7 @@ The command generates an `sfeos_topology.html` file and automatically opens it i
 ### viewer
 
 Launch an interactive Streamlit-based web viewer for exploring STAC collections and items. The viewer provides:
+
 - Interactive map visualization of STAC items
 - Collection browser and selector
 - Item search and filtering
@@ -513,17 +549,20 @@ sfeos-tools viewer [options]
 ```
 
 Options:
+
 - `--stac-url`: STAC API base URL (default: http://localhost:8080)
 - `--port`: Port for the Streamlit viewer (default: 8501)
 
 **Requirements:**
 
 The viewer requires additional dependencies. Install with:
+
 ```bash
 pip install sfeos-tools[viewer]
 ```
 
 Examples:
+
 ```bash
 # Launch viewer with default settings (connects to http://localhost:8080)
 sfeos-tools viewer
